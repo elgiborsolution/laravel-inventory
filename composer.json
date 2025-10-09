@@ -1,0 +1,24 @@
+{
+  "name": "elgibor-solution/laravel-inventory",
+  "description": "Inventory, costing (FIFO & Average), journal posting, multi-branch/warehouse/rack, configurable stages for Laravel.",
+  "license": "Apache-2.0",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "ESolution\\Inventory\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "illuminate/support": "^9.0|^10.0|^11.0|^12.0",
+    "illuminate/database": "^9.0|^10.0|^11.0|^12.0",
+    "illuminate/events": "^9.0|^10.0|^11.0|^12.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ESolution\\Inventory\\InventoryServiceProvider"
+      ]
+    }
+  }
+}
