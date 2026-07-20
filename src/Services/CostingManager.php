@@ -13,9 +13,14 @@ class CostingManager
     {
         $item = $line->item()->first();
         $method = $item->valuation ?? inv_cfg('default_valuation','fifo');
-        return match($method){
-            'average' => app(AverageDriver::class),
-            default   => app(FifoDriver::class),
-        };
+
+        $drivers = inv_cfg('costing_drivers', [
+            'fifo'           => FifoDriver::class,
+            'average'        => AverageDriver::class,
+            'moving_average' => \ESolution\Inventory\Drivers\Costing\MovingAverageDriver::class,
+        ]);
+
+        $driverClass = $drivers[$method] ?? $drivers['fifo'];
+        return app($driverClass);
     }
 }

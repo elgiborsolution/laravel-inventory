@@ -1,7 +1,15 @@
 <?php
 
 return [
-    'default_valuation' => 'fifo', // fifo|average
+    'default_valuation' => 'fifo', // fifo|average|moving_average
+
+    'enable_stock_cards' => true,
+
+    'costing_drivers' => [
+        'fifo'           => \ESolution\Inventory\Drivers\Costing\FifoDriver::class,
+        'average'        => \ESolution\Inventory\Drivers\Costing\AverageDriver::class,
+        'moving_average' => \ESolution\Inventory\Drivers\Costing\MovingAverageDriver::class,
+    ],
 
     'valuation_scopes' => [
         'per_branch'    => true,
