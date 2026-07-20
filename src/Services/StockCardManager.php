@@ -1,4 +1,5 @@
 <?php
+
 namespace ESolution\Inventory\Services;
 
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class StockCardManager
         $grouped = [];
         foreach ($document->lines as $line) {
             $key = $line->item_id . '_' . $line->branch_id;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'item_id' => $line->item_id,
@@ -26,11 +27,12 @@ class StockCardManager
                     'totalTrx' => 0,
                     'salesPrice' => $line->meta['harga_jual'] ?? 0,
                     'discount' => $line->meta['diskon'] ?? 0,
+                    'discount_type' => $line->meta['discount_type'] ?? null,
                     'nettPrice' => $line->meta['harga_nett'] ?? ($line->unit_cost ?? 0),
                     'line_ids' => [],
                 ];
             }
-            
+
             $grouped[$key]['qty'] += $line->qty;
             $nettPrice = $line->meta['harga_nett'] ?? ($line->unit_cost ?? 0);
             $grouped[$key]['totalTrx'] += ($line->qty * $nettPrice);
@@ -53,56 +55,56 @@ class StockCardManager
 
         $qty = $group['qty'];
         $totalTrx = $group['totalTrx'];
-        
+
         $prevBalanceQty = $lastCard ? (float) $lastCard->balance_qty : 0;
         $prevBalanceAmount = $lastCard ? (float) $lastCard->balance_amount : 0;
         $prevAvgCost = $lastCard ? (float) $lastCard->average_cost : 0;
         $prevRunningSales = $lastCard ? (float) $lastCard->running_total_sales : 0;
-        
+
         $newBalanceQty = 0;
         $newBalanceAmount = 0;
         $newAvgCost = 0;
-        
+
         $cogs = 0;
         $profitUnit = 0;
         $profitAmount = 0;
         $runningSales = $prevRunningSales;
         $runningAvgSales = $lastCard ? (float) $lastCard->running_avg_sales : 0;
-        
+
         $direction = 'balance';
         if (in_array($document->type, ['purchase', 'stock_opname', 'transfer_in', 'sales_return'])) {
             $direction = 'in';
-            
+
             // Get actual purchase amount from ledger
             $actualLedgerAmount = DB::table('inv_stock_ledgers')
                 ->whereIn('document_line_id', $group['line_ids'])
                 ->where('direction', 'in')
                 ->sum('amount');
-                
+
             $inAmount = $actualLedgerAmount > 0 ? $actualLedgerAmount : $totalTrx;
-            
+
             $newBalanceQty = $prevBalanceQty + $qty;
             $newBalanceAmount = $prevBalanceAmount + $inAmount;
             $newAvgCost = $newBalanceQty > 0 ? ($newBalanceAmount / $newBalanceQty) : 0;
         } elseif (in_array($document->type, ['sale', 'purchase_return', 'transfer_out'])) {
             $direction = 'out';
-            
+
             // AMBIL HPP ASLI DARI DATABASE (Summary of all racks)
             $actualCogs = DB::table('inv_stock_ledgers')
                 ->whereIn('document_line_id', $group['line_ids'])
                 ->where('direction', 'out')
                 ->sum('amount');
-                
-            $cogs = $actualCogs; 
-            
+
+            $cogs = $actualCogs;
+
             $newBalanceQty = $prevBalanceQty - $qty;
             $newBalanceAmount = $prevBalanceAmount - $cogs;
-            $newAvgCost = $prevAvgCost; 
-            
+            $newAvgCost = $prevAvgCost;
+
             if ($document->type === 'sale') {
                 $actualUnitCost = $qty > 0 ? ($cogs / $qty) : 0;
                 // $profitUnit is an average profit across racks
-                $profitUnit = $qty > 0 ? (($totalTrx - $cogs) / $qty) : 0; 
+                $profitUnit = $qty > 0 ? (($totalTrx - $cogs) / $qty) : 0;
                 $profitAmount = $totalTrx - $cogs;
                 $runningSales += $totalTrx;
 
@@ -112,14 +114,14 @@ class StockCardManager
                     ->where('branch_id', $group['branch_id'])
                     ->where('document_type', 'sale')
                     ->sum('qty');
-                
+
                 $cumulativeQty = $pastQtySold + $qty;
                 $runningAvgSales = $cumulativeQty > 0 ? ($runningSales / $cumulativeQty) : 0;
             }
         }
 
         DB::table('inv_stock_cards')->insert([
-            'id' => (string) Str::uuid(),
+            'id' => (string) Str::orderedUuid(),
             'item_id' => $group['item_id'],
             'branch_id' => $group['branch_id'],
             'date' => $document->date,
@@ -127,23 +129,24 @@ class StockCardManager
             'document_type' => $document->type,
             'direction' => $direction,
             'description' => $document->meta['description'] ?? null,
-            
+
             'qty' => $qty,
             'sales_price' => $group['salesPrice'],
             'discount_amount' => $group['discount'],
+            'discount_type' => $group['discount_type'] ?? null,
             'nett_price' => $qty > 0 ? ($totalTrx / $qty) : 0, // Avg nett price
             'total_trx' => $totalTrx,
-            
+
             'average_cost' => $newAvgCost,
             'balance_qty' => $newBalanceQty,
             'balance_amount' => $newBalanceAmount,
-            
+
             'cogs' => $cogs,
             'profit_unit' => $profitUnit,
             'profit_amount' => $profitAmount,
             'running_total_sales' => $runningSales,
             'running_avg_sales' => $runningAvgSales,
-            
+
             'created_at' => now(),
             'updated_at' => now(),
         ]);
