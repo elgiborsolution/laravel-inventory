@@ -15,7 +15,7 @@ class InventoryManager
 
     public function post(DocumentData $docData)
     {
-        return DB::transaction(function() use ($docData){
+        $document = DB::transaction(function() use ($docData){
             $doc = Document::create([
                 'external_id'=>$docData->external_id,
                 'type'=>$docData->type,
@@ -53,6 +53,10 @@ class InventoryManager
                 default => $doc,
             };
         });
+
+        app(\ESolution\Inventory\Services\StockCardManager::class)->generateForDocument($document);
+
+        return $document;
     }
 
     // quick helpers
