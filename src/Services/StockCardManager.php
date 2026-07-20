@@ -67,6 +67,7 @@ class StockCardManager
         $profitUnit = 0;
         $profitAmount = 0;
         $runningSales = $prevRunningSales;
+        $runningAvgSales = $lastCard ? (float) $lastCard->running_avg_sales : 0;
         
         $direction = 'balance';
         if (in_array($document->type, ['purchase', 'stock_opname', 'transfer_in', 'sales_return'])) {
@@ -104,6 +105,16 @@ class StockCardManager
                 $profitUnit = $qty > 0 ? (($totalTrx - $cogs) / $qty) : 0; 
                 $profitAmount = $totalTrx - $cogs;
                 $runningSales += $totalTrx;
+
+                // Hitung total qty terjual historis untuk item ini
+                $pastQtySold = DB::table('inv_stock_cards')
+                    ->where('item_id', $group['item_id'])
+                    ->where('branch_id', $group['branch_id'])
+                    ->where('document_type', 'sale')
+                    ->sum('qty');
+                
+                $cumulativeQty = $pastQtySold + $qty;
+                $runningAvgSales = $cumulativeQty > 0 ? ($runningSales / $cumulativeQty) : 0;
             }
         }
 
@@ -131,7 +142,7 @@ class StockCardManager
             'profit_unit' => $profitUnit,
             'profit_amount' => $profitAmount,
             'running_total_sales' => $runningSales,
-            'running_avg_sales' => 0,
+            'running_avg_sales' => $runningAvgSales,
             
             'created_at' => now(),
             'updated_at' => now(),
