@@ -133,7 +133,6 @@ class StockCardManager
             'qty' => $qty,
             'sales_price' => $group['salesPrice'],
             'discount_amount' => $group['discount'],
-            'discount_type' => $group['discount_type'] ?? null,
             'nett_price' => $qty > 0 ? ($totalTrx / $qty) : 0, // Avg nett price
             'total_trx' => $totalTrx,
 
