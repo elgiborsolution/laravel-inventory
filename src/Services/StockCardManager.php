@@ -49,7 +49,7 @@ class StockCardManager
         $lastCard = DB::table('inv_stock_cards')
             ->where('item_id', $group['item_id'])
             ->where('branch_id', $group['branch_id'])
-            ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();
 
