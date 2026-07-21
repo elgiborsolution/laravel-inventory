@@ -20,13 +20,14 @@ class StockCardManager
             $key = $line->item_id . '_' . $line->branch_id;
 
             if (!isset($grouped[$key])) {
+                $isPurchase = $document->type === 'purchase';
                 $grouped[$key] = [
                     'item_id' => $line->item_id,
                     'branch_id' => $line->branch_id,
                     'qty' => 0,
                     'totalTrx' => 0,
-                    'salesPrice' => $line->meta['harga_jual'] ?? 0,
-                    'discount' => $line->meta['diskon'] ?? 0,
+                    'salesPrice' => $isPurchase ? ($line->meta['harga_nett'] ?? ($line->unit_cost ?? 0)) : ($line->meta['harga_jual'] ?? 0),
+                    'discount' => $isPurchase ? 0 : ($line->meta['diskon'] ?? 0),
                     'discount_type' => $line->meta['discount_type'] ?? null,
                     'nettPrice' => $line->meta['harga_nett'] ?? ($line->unit_cost ?? 0),
                     'line_ids' => [],
