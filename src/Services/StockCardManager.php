@@ -86,6 +86,10 @@ class StockCardManager
             $newBalanceQty = $prevBalanceQty + $qty;
             $newBalanceAmount = $prevBalanceAmount + $inAmount;
             $newAvgCost = $newBalanceQty > 0 ? ($newBalanceAmount / $newBalanceQty) : 0;
+
+            if ($document->type === 'purchase') {
+                $newAvgCost = 0;
+            }
         } elseif (in_array($document->type, ['sale', 'purchase_return', 'transfer_out'])) {
             $direction = 'out';
 
@@ -133,7 +137,7 @@ class StockCardManager
             'qty' => $qty,
             'sales_price' => $group['salesPrice'],
             'discount_amount' => $group['discount'],
-            'nett_price' => $qty > 0 ? ($totalTrx / $qty) : 0, // Avg nett price
+            'nett_price' => $qty > 0 ? ($totalTrx / $qty) : 0,
             'total_trx' => $totalTrx,
 
             'average_cost' => $newAvgCost,
