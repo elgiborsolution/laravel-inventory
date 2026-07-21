@@ -49,7 +49,7 @@ class StockCardManager
         $lastCard = DB::table('inv_stock_cards')
             ->where('item_id', $group['item_id'])
             ->where('branch_id', $group['branch_id'])
-            ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();
 
@@ -58,7 +58,7 @@ class StockCardManager
 
         $prevBalanceQty = $lastCard ? (float) $lastCard->balance_qty : 0;
         $prevBalanceAmount = $lastCard ? (float) $lastCard->balance_amount : 0;
-        $prevAvgCost = $lastCard ? (float) $lastCard->average_cost : 0;
+        $prevAvgCost = $prevBalanceQty > 0 ? ($prevBalanceAmount / $prevBalanceQty) : 0;
         $prevRunningSales = $lastCard ? (float) $lastCard->running_total_sales : 0;
 
         $newBalanceQty = 0;
@@ -69,7 +69,7 @@ class StockCardManager
         $profitUnit = 0;
         $profitAmount = 0;
         $runningSales = $prevRunningSales;
-        $runningAvgSales = $lastCard ? (float) $lastCard->running_avg_sales : 0;
+        $runningAvgSales = 0; // Default 0 untuk transaksi selain penjualan (seperti pembelian)
 
         $direction = 'balance';
         if (in_array($document->type, ['purchase', 'stock_opname', 'transfer_in', 'sales_return'])) {
@@ -81,7 +81,7 @@ class StockCardManager
                 ->where('direction', 'in')
                 ->sum('amount');
 
-            $inAmount = $actualLedgerAmount > 0 ? $actualLedgerAmount : $totalTrx;
+            $inAmount = $actualLedgerAmount > 0 ? (float) $actualLedgerAmount : $totalTrx;
 
             $newBalanceQty = $prevBalanceQty + $qty;
             $newBalanceAmount = $prevBalanceAmount + $inAmount;
@@ -94,16 +94,21 @@ class StockCardManager
                 ->where('direction', 'out')
                 ->sum('amount');
 
-            $cogs = $actualCogs;
+            // Kalkulasi COGS berbasis average cost dari kartu stok agar balance amount konsisten
+            $expectedCogs = $prevAvgCost > 0 ? ($qty * $prevAvgCost) : (float) $actualCogs;
+            $cogs = min($expectedCogs > 0 ? $expectedCogs : (float) $actualCogs, $prevBalanceAmount);
 
             $newBalanceQty = $prevBalanceQty - $qty;
-            $newBalanceAmount = $prevBalanceAmount - $cogs;
+            $newBalanceAmount = max(0, $prevBalanceAmount - $cogs);
 
-            $newAvgCost = 0;
+            if ($newBalanceQty <= 0) {
+                $newBalanceAmount = 0;
+                $newAvgCost = 0;
+            } else {
+                $newAvgCost = $newBalanceAmount / $newBalanceQty;
+            }
 
             if ($document->type === 'sale') {
-                $actualUnitCost = $qty > 0 ? ($cogs / $qty) : 0;
-                // $profitUnit is an average profit across racks
                 $profitUnit = $qty > 0 ? (($totalTrx - $cogs) / $qty) : 0;
                 $profitAmount = $totalTrx - $cogs;
                 $runningSales += $totalTrx;
@@ -136,7 +141,7 @@ class StockCardManager
             'nett_price' => $qty > 0 ? ($totalTrx / $qty) : 0,
             'total_trx' => $totalTrx,
 
-            'average_cost' => $newAvgCost,
+            'average_cost' => ($document->type === 'sale') ? 0 : $newAvgCost,
             'balance_qty' => $newBalanceQty,
             'balance_amount' => $newBalanceAmount,
 
