@@ -86,14 +86,9 @@ class StockCardManager
             $newBalanceQty = $prevBalanceQty + $qty;
             $newBalanceAmount = $prevBalanceAmount + $inAmount;
             $newAvgCost = $newBalanceQty > 0 ? ($newBalanceAmount / $newBalanceQty) : 0;
-
-            if ($document->type === 'purchase') {
-                $newAvgCost = 0;
-            }
         } elseif (in_array($document->type, ['sale', 'purchase_return', 'transfer_out'])) {
             $direction = 'out';
 
-            // AMBIL HPP ASLI DARI DATABASE (Summary of all racks)
             $actualCogs = DB::table('inv_stock_ledgers')
                 ->whereIn('document_line_id', $group['line_ids'])
                 ->where('direction', 'out')
@@ -103,7 +98,8 @@ class StockCardManager
 
             $newBalanceQty = $prevBalanceQty - $qty;
             $newBalanceAmount = $prevBalanceAmount - $cogs;
-            $newAvgCost = $prevAvgCost;
+
+            $newAvgCost = 0;
 
             if ($document->type === 'sale') {
                 $actualUnitCost = $qty > 0 ? ($cogs / $qty) : 0;
