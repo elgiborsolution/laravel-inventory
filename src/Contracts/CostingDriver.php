@@ -1,10 +1,16 @@
 <?php
+
 namespace ESolution\Inventory\Contracts;
 
-use ESolution\Inventory\Models\DocumentLine;
+use ESolution\Inventory\DTO\CostingResult;
+use ESolution\Inventory\Enums\ValuationMethod;
 
-interface CostingDriver {
-    public function consume(DocumentLine $line, float $qty): float; // return unit cost for OUT
-    public function receive(DocumentLine $line, float $qty, float $unitCost): void; // IN
-    public function reverse(DocumentLine $line): void; // optional
+interface CostingDriver
+{
+    public function method(): ValuationMethod;
+
+    /** @param list<array{id: int, qty: float, unit_cost: float}> $layers */
+    public function issue(array $layers, float $quantity): CostingResult;
+
+    public function receipt(float $currentQuantity, float $currentValue, float $quantity, float $unitCost): CostingResult;
 }

@@ -1,11 +1,28 @@
 {
   "name": "elgibor-solution/laravel-inventory",
-  "description": "Inventory, costing (FIFO & Average), journal posting, multi-branch/warehouse/rack, configurable stages for Laravel.",
+  "description": "Extensible inventory core with scoped stock, costing, tracking, workflow, and reservations for Laravel.",
   "license": "Apache-2.0",
   "type": "library",
   "autoload": {
+    "files": [
+      "src/Support/helpers.php"
+    ],
     "psr-4": {
       "ESolution\\Inventory\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ESolution\\Inventory\\Tests\\": "tests/",
+      "ESolution\\InventoryAsset\\": "packages/asset/src/",
+      "ESolution\\InventoryAutomotive\\": "packages/automotive/src/",
+      "ESolution\\InventoryFood\\": "packages/food/src/",
+      "ESolution\\InventoryHealthcare\\": "packages/healthcare/src/",
+      "ESolution\\InventoryLibrary\\": "packages/library/src/",
+      "ESolution\\InventoryManufacturing\\": "packages/manufacturing/src/",
+      "ESolution\\InventoryProject\\": "packages/project/src/",
+      "ESolution\\InventoryRetail\\": "packages/retail/src/",
+      "ESolution\\InventoryWms\\": "packages/wms/src/"
     }
   },
   "require": {
@@ -14,7 +31,40 @@
     "illuminate/database": "^9.0|^10.0|^11.0|^12.0|^13.0",
     "illuminate/events": "^9.0|^10.0|^11.0|^12.0|^13.0"
   },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.88",
+    "larastan/larastan": "^2.11|^3.10",
+    "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0|^11.0",
+    "pestphp/pest": "^2.36|^3.8|^4.7"
+  },
+  "suggest": {
+    "e-solution/laravel-approval-flow": "Optional workflow approval integration for Inventory documents.",
+    "elgibor-solution/laravel-accounting": "Required only when inventory.accounting.enabled is true."
+  },
+  "scripts": {
+    "release:preflight": "@php tools/release-preflight.php",
+    "docs:check": "@php tools/reference.php --check",
+    "test": "pest",
+    "analyse": "phpstan analyse --memory-limit=1G",
+    "format": "php-cs-fixer fix --allow-risky=yes",
+    "format:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",
+    "check": [
+      "@docs:check",
+      "@test",
+      "@analyse",
+      "@format:check"
+    ]
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    },
+    "sort-packages": true
+  },
   "extra": {
+    "branch-alias": {
+      "dev-main": "1.x-dev"
+    },
     "laravel": {
       "providers": [
         "ESolution\\Inventory\\InventoryServiceProvider"

@@ -1,0 +1,22 @@
+{
+  "name": "elgibor-solution/laravel-inventory-wms",
+  "description": "Independent WMS vertical for Laravel Inventory.",
+  "license": "Apache-2.0",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "ESolution\\InventoryWms\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "elgibor-solution/laravel-inventory": "^1.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ESolution\\InventoryWms\\WmsServiceProvider"
+      ]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "elgibor-solution/laravel-inventory-library",
+  "description": "Independent Library circulation and hold queues for Inventory Core.",
+  "license": "Apache-2.0",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "ESolution\\InventoryLibrary\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "elgibor-solution/laravel-inventory": "^1.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ESolution\\InventoryLibrary\\LibraryServiceProvider"
+      ]
+    }
+  }
+}

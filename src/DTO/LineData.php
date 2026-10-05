@@ -1,20 +1,8 @@
 <?php
+
 namespace ESolution\Inventory\DTO;
 
-class LineData {
-    public function __construct(
-        public int $itemId,
-        public int $branchId,
-        public int $warehouseId,
-        public ?int $rackId = null,
-        public float $qty = 0,
-        public ?float $unitCost = null,
-        public array $meta = [],
-    ){}
-
-    public static function make(
-        int $itemId, int $branchId, int $warehouseId, ?int $rackId, float $qty, ?float $unitCost=null, array $meta=[]
-    ): self {
-        return new self($itemId,$branchId,$warehouseId,$rackId,$qty,$unitCost,$meta);
-    }
+final class LineData
+{
+    public function __construct(public int $itemId, public int $uomId, public int $warehouseId, public float $qty, public ?int $storageLocationId = null, public float $qtyBonus = 0, public ?float $unitCost = null, public ?int $batchId = null, public ?int $serialId = null, public array $meta = []) {}
 }

@@ -1,12 +1,29 @@
 <?php
+
 namespace ESolution\Inventory\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class DocumentLine extends Model {
+class DocumentLine extends Model
+{
     protected $table = 'inv_document_lines';
-    protected $fillable = ['document_id','item_id','branch_id','warehouse_id','rack_id','qty','unit_cost','meta'];
-    protected $casts = ['meta'=>'array'];
-    public function document(){ return $this->belongsTo(Document::class); }
-    public function item(){ return $this->belongsTo(Item::class); }
+    protected $guarded = [];
+    protected $casts = ['meta' => 'array'];
+    public function document(): BelongsTo
+    {
+        return $this->belongsTo(Document::class);
+    } public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class);
+    } public function ledgers(): HasMany
+    {
+        return $this->hasMany(StockLedger::class);
+    }
+
+    public function reservationConsumptions(): HasMany
+    {
+        return $this->hasMany(ReservationConsumption::class);
+    }
 }

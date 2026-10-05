@@ -1,0 +1,22 @@
+{
+  "name": "elgibor-solution/laravel-inventory-retail",
+  "description": "Retail vertical for Laravel Inventory with stock-bearing variants and consignment settlement tracking.",
+  "license": "Apache-2.0",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "ESolution\\InventoryRetail\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "elgibor-solution/laravel-inventory": "^1.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ESolution\\InventoryRetail\\RetailServiceProvider"
+      ]
+    }
+  }
+}

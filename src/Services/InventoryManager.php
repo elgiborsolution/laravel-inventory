@@ -1,71 +1,61 @@
 <?php
+
 namespace ESolution\Inventory\Services;
 
-use Illuminate\Support\Facades\DB;
-use ESolution\Inventory\DTO\{DocumentData, LineData};
-use ESolution\Inventory\Models\{Document, DocumentLine};
-use ESolution\Inventory\Enums\DocumentType;
-use ESolution\Inventory\Services\{CostingManager, MovementPipeline, JournalManager};
+use ESolution\Inventory\DTO\DocumentData;
+use ESolution\Inventory\DTO\ReversalRequest;
+use ESolution\Inventory\DTO\StockAvailability;
+use ESolution\Inventory\DTO\TransferData;
+use ESolution\Inventory\Models\Document;
+use ESolution\Inventory\Models\Reservation;
 
-class InventoryManager
+final class InventoryManager
 {
     public function __construct(
-        protected $app
-    ){}
+        private readonly PostingEngine $posting,
+        private readonly ReservationService $reservations,
+        private readonly ResumeApprovedDocument $approvalResume,
+        private readonly StockAvailabilityService $availability,
+        private readonly TransferReversalService $movements,
+    ) {}
 
-    public function post(DocumentData $docData)
+    public function post(DocumentData $data): Document
     {
-        $document = DB::transaction(function() use ($docData){
-            $doc = Document::create([
-                'external_id'=>$docData->external_id,
-                'type'=>$docData->type,
-                'date'=>$docData->date,
-                'ref'=>$docData->ref,
-                'meta'=>$docData->meta,
-            ]);
-
-            $lines = [];
-            foreach ($docData->lines as $ld) {
-                /** @var LineData $ld */
-                $lines[] = DocumentLine::create([
-                    'document_id'=>$doc->id,
-                    'item_id'=>$ld->itemId,
-                    'branch_id'=>$ld->branchId,
-                    'warehouse_id'=>$ld->warehouseId,
-                    'rack_id'=>$ld->rackId,
-                    'qty'=>$ld->qty,
-                    'unit_cost'=>$ld->unitCost,
-                    'meta'=>$ld->meta,
-                ]);
-            }
-            $doc->setRelation('lines', collect($lines));
-
-            return match($docData->type){
-                DocumentType::PURCHASE->value        => (new \ESolution\Inventory\Actions\PostPurchase($this))->handle($doc),
-                DocumentType::SALE->value            => (new \ESolution\Inventory\Actions\PostSale($this))->handle($doc),
-                DocumentType::PURCHASE_RETURN->value => (new \ESolution\Inventory\Actions\PostPurchaseReturn($this))->handle($doc),
-                DocumentType::SALES_RETURN->value    => (new \ESolution\Inventory\Actions\PostSalesReturn($this))->handle($doc),
-                DocumentType::STOCK_OPNAME->value    => (new \ESolution\Inventory\Actions\PostStockOpname($this))->handle($doc),
-                DocumentType::CONSIGNMENT->value     => (new \ESolution\Inventory\Actions\PostConsignment($this))->handle($doc),
-                DocumentType::TRANSFER_RACK->value   => (new \ESolution\Inventory\Actions\PostTransferRack($this))->handle($doc),
-                DocumentType::TRANSFER_WAREHOUSE->value => (new \ESolution\Inventory\Actions\PostTransferWarehouse($this))->handle($doc),
-                DocumentType::TRANSFER_BRANCH->value => (new \ESolution\Inventory\Actions\PostTransferBranch($this))->handle($doc),
-                default => $doc,
-            };
-        });
-
-        app(\ESolution\Inventory\Services\StockCardManager::class)->generateForDocument($document);
-
-        return $document;
+        return $this->posting->post($data);
     }
 
-    // quick helpers
-    public function costingDriver($line){ return app(CostingManager::class)->driverFor($line); }
-    public function pipeline(){ return app(MovementPipeline::class); }
-    public function journal(){ return app(JournalManager::class); }
+    public function transfer(TransferData $data): Document
+    {
+        return $this->movements->transfer($data);
+    }
 
-    // Transfer helpers (simple wrappers around post())
-    public function transferRack(array $params){ /* left as exercise */ }
-    public function transferWarehouse(array $params){ /* left as exercise */ }
-    public function transferBranch(array $params){ /* left as exercise */ }
+    public function reverse(ReversalRequest $request): Document
+    {
+        return $this->movements->reverse($request);
+    }
+
+    public function resumeApproved(int $documentId): Document
+    {
+        return $this->approvalResume->handle($documentId);
+    }
+
+    public function reserve(int $itemId, float $qty, int $warehouseId, string $sourceType, string $sourceId): Reservation
+    {
+        return $this->reservations->reserve($itemId, $qty, $warehouseId, $sourceType, $sourceId);
+    }
+
+    public function release(int $id, ?float $qty = null): Reservation
+    {
+        return $this->reservations->release($id, $qty);
+    }
+
+    public function consume(int $id, float $qty, string $key, ?int $lineId = null): Reservation
+    {
+        return $this->reservations->consume($id, $qty, $key, $lineId);
+    }
+
+    public function availability(int $itemId, int $warehouseId): StockAvailability
+    {
+        return $this->availability->forItem($itemId, $warehouseId);
+    }
 }

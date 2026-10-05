@@ -1,84 +1,42 @@
 <?php
+
 namespace ESolution\Inventory\Drivers\Costing;
 
 use ESolution\Inventory\Contracts\CostingDriver;
-use ESolution\Inventory\Models\{DocumentLine, CostLayer};
+use ESolution\Inventory\DTO\CostingResult;
+use ESolution\Inventory\Enums\ValuationMethod;
 
-class MovingAverageDriver implements CostingDriver
+final class MovingAverageDriver implements CostingDriver
 {
-    private function scopeLayers($q, DocumentLine $line)
+    public function method(): ValuationMethod
     {
-        $q->where('item_id', $line->item_id);
-        if (inv_cfg('valuation_scopes.per_branch')) {
-            $q->where('branch_id', $line->branch_id);
-        }
-        if (inv_cfg('valuation_scopes.per_warehouse')) {
-            $q->where('warehouse_id', $line->warehouse_id);
-        }
-        if (inv_cfg('valuation_scopes.per_rack')) {
-            $q->where('rack_id', $line->rack_id);
-        } else {
-            $q->whereNull('rack_id');
-        }
-        return $q;
+        return ValuationMethod::MOVING_AVERAGE;
     }
 
-    private function aggregate(DocumentLine $line): array
+    public function issue(array $layers, float $quantity): CostingResult
     {
-        $q = CostLayer::query();
-        $this->scopeLayers($q, $line);
-        $layers = $q->get();
-        $qty = 0;
-        $amt = 0;
-        foreach ($layers as $l) {
-            $qty += $l->qty_remain;
-            $amt += $l->qty_remain * $l->unit_cost;
+        if ($quantity <= 0 || $layers === []) {
+            throw new \DomainException('Moving-average issue requires an active average layer.');
         }
-        $avg = $qty > 0 ? $amt / $qty : 0;
-        return [$qty, $avg];
-    }
-
-    public function consume(DocumentLine $line, float $qty): float
-    {
-        [$qty0, $avg] = $this->aggregate($line);
-        if ($qty0 < $qty) {
-            throw new \RuntimeException('Insufficient stock');
+        $layer = $layers[array_key_last($layers)];
+        if ($layer['qty'] < $quantity) {
+            throw new \DomainException('Insufficient quantity for moving-average costing.');
         }
 
-        $q = CostLayer::query();
-        $this->scopeLayers($q, $line);
-        $layers = $q->orderBy('id')->lockForUpdate()->get();
-        $remaining = $qty;
+        return new CostingResult($quantity, $layer['unit_cost'], $quantity * $layer['unit_cost']);
+    }
 
-        foreach ($layers as $layer) {
-            if ($remaining <= 0) break;
-            $take = min($layer->qty_remain, $remaining);
-            $layer->qty_remain -= $take;
-            $remaining -= $take;
-            
-            // Revalue the remaining cost layer to ensure average stays intact
-            $layer->unit_cost = $avg;
-            $layer->save();
+    public function receipt(float $currentQuantity, float $currentValue, float $quantity, float $unitCost): CostingResult
+    {
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException('Costing quantity must be positive.');
+        }
+        $newQuantity = $currentQuantity + $quantity;
+        $newValue = $currentValue + ($quantity * $unitCost);
+        if ($newQuantity <= 0) {
+            throw new \DomainException('Moving-average receipt must result in positive quantity.');
         }
 
-        return round($avg, 6);
-    }
-
-    public function receive(DocumentLine $line, float $qty, float $unitCost): void
-    {
-        CostLayer::create([
-            'item_id' => $line->item_id,
-            'branch_id' => $line->branch_id,
-            'warehouse_id' => $line->warehouse_id,
-            'rack_id' => inv_cfg('valuation_scopes.per_rack') ? $line->rack_id : null,
-            'qty_remain' => $qty,
-            'unit_cost' => $unitCost,
-            'source_document_id' => $line->document_id,
-        ]);
-    }
-
-    public function reverse(DocumentLine $line): void
-    {
-        // Optional implementation
+        return new CostingResult($newQuantity, $newValue / $newQuantity, $newValue);
     }
 }

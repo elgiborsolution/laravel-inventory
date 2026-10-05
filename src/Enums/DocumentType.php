@@ -1,7 +1,9 @@
 <?php
+
 namespace ESolution\Inventory\Enums;
 
-enum DocumentType: string {
+enum DocumentType: string
+{
     case PURCHASE = 'purchase';
     case SALE = 'sale';
     case PURCHASE_RETURN = 'purchase_return';

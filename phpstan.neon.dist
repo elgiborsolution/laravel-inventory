@@ -1,0 +1,31 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+    parallel:
+        maximumNumberOfProcesses: 1
+    paths:
+        - src
+        - packages/library/src
+        - packages/automotive/src
+        - packages/asset/src
+        - packages/food/src
+        - packages/healthcare/src
+        - packages/manufacturing/src
+        - packages/project/src
+        - packages/retail/src
+        - packages/wms/src
+    level: 3
+    tmpDir: .phpstan.cache
+    databaseMigrationsPath:
+        - database/migrations
+        - packages/library/database/migrations
+        - packages/asset/database/migrations
+        - packages/food/database/migrations
+        - packages/healthcare/database/migrations
+        - packages/manufacturing/database/migrations
+        - packages/project/database/migrations
+        - packages/retail/database/migrations
+        - packages/wms/database/migrations

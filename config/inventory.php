@@ -1,45 +1,36 @@
 <?php
 
 return [
-    'default_valuation' => 'fifo', // fifo|average|moving_average
-
-    'enable_stock_cards' => true,
-
-    'costing_drivers' => [
-        'fifo'           => \ESolution\Inventory\Drivers\Costing\FifoDriver::class,
-        'average'        => \ESolution\Inventory\Drivers\Costing\AverageDriver::class,
-        'moving_average' => \ESolution\Inventory\Drivers\Costing\MovingAverageDriver::class,
+    'organization' => ['levels' => ['holding' => false, 'company' => false, 'business_unit' => false, 'branch' => true, 'outlet' => false, 'department' => false, 'warehouse' => true]],
+    'storage' => ['levels' => ['warehouse' => true, 'zone' => false, 'aisle' => false, 'rack' => true, 'shelf' => false, 'bin' => false, 'pallet' => false]],
+    'costing' => ['default_method' => 'fifo', 'scope' => 'warehouse', 'negative_stock_cost' => 'last_known'],
+    'inventory_model' => ['default' => 'standard'],
+    'idempotency' => ['mode' => 'return_existing'],
+    'policies' => [
+        'posting' => ['enabled' => true],
+        // Add "reservation" to applies_to when backorders must be rejected at reservation time.
+        'negative_stock' => ['mode' => 'block', 'applies_to' => ['goods_issue']],
+        'certificate' => ['enabled' => false, 'categories' => []],
+        'reservation' => ['enabled' => true],
     ],
-
-    'valuation_scopes' => [
-        'per_branch'    => true,
-        'per_warehouse' => true,
-        'per_rack'      => false,
+    'accounting' => [
+        'enabled' => false,
+        'connection' => null,
+        'tenant_payload_key' => null,
+        'service_code_map' => [
+            'purchase_receipt' => 'PURCHASE_CREDIT',
+            'goods_issue' => ['SALES_CASH', 'SALES_CASH_VAT', 'SALES_CREDIT', 'SALES_CREDIT_VAT'],
+            'sales_delivery' => ['SALES_CASH', 'SALES_CASH_VAT', 'SALES_CREDIT', 'SALES_CREDIT_VAT'],
+            'customer_return' => 'SALES_RETURN',
+            'supplier_return' => 'PURCHASE_RETURN',
+            'positive_adjustment' => 'STOCK_ADJUSTMENT_PLUS',
+            'negative_adjustment' => 'STOCK_ADJUSTMENT_MINUS',
+            'warehouse_transfer.intra_company' => null,
+            'warehouse_transfer.cross_company' => 'STOCK_TRANSFER',
+        ],
     ],
-
-    'accounts' => [
-        'inventory'            => '1100-INV',
-        'cogs'                 => '5100-COGS',
-        'ap'                   => '2100-AP',
-        'ar'                   => '1101-AR',
-        'purchase_return'      => '5201-PurchaseReturn',
-        'sales_return'         => '4102-SalesReturn',
-        'inventory_gain'       => '5202-InvGain',
-        'inventory_loss'       => '5203-InvLoss',
-        'inventory_interbranch'=> '1180-INV-INTRANSIT',
+    'approval' => [
+        'rejection_status_map' => [],
     ],
-
-    'account_overrides' => [
-        // 'BR-A' => ['inventory' => '11A0-INV-A', 'cogs' => '51A0-COGS-A'],
-    ],
-
-    'item_type_stages' => [
-        'regular'   => ['pickup_admin_gudang','dibawa_salesman','diserahkan_toko'],
-        'fast_move' => ['keluar_gudang','diterima_toko'],
-    ],
-
-    'stage_triggers' => [
-        'recognize_cogs_on' => 'final', // final|custom
-        'custom_stage'      => null,
-    ],
+    'events' => ['after_commit' => true],
 ];

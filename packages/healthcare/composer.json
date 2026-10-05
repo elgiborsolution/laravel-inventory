@@ -1,0 +1,22 @@
+{
+  "name": "elgibor-solution/laravel-inventory-healthcare",
+  "description": "Independent Healthcare vertical for Laravel Inventory.",
+  "license": "Apache-2.0",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "ESolution\\InventoryHealthcare\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "elgibor-solution/laravel-inventory": "^1.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ESolution\\InventoryHealthcare\\HealthcareServiceProvider"
+      ]
+    }
+  }
+}

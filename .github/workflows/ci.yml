@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.1'
+            laravel: '9'
+            testbench: '^7.0'
+            pest: '^2.36'
+            larastan: '^2.11'
+          - php: '8.1'
+            laravel: '10'
+            testbench: '^8.0'
+            pest: '^2.36'
+            larastan: '^2.11'
+          - php: '8.2'
+            laravel: '11'
+            testbench: '^9.0'
+            pest: '^3.8'
+            larastan: '^2.11'
+          - php: '8.2'
+            laravel: '12'
+            testbench: '^10.0'
+            pest: '^3.8'
+            larastan: '^3.10'
+          - php: '8.3'
+            laravel: '13'
+            testbench: '^11.0'
+            pest: '^4.7'
+            larastan: '^3.10'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Select framework-compatible development tools
+        run: >-
+          composer require --dev --no-update
+          "orchestra/testbench:${{ matrix.testbench }}"
+          "pestphp/pest:${{ matrix.pest }}"
+          "larastan/larastan:${{ matrix.larastan }}"
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Validate package
+        run: composer validate --strict
+
+      - name: Audit dependencies
+        run: composer audit --locked
+
+      - name: Test
+        run: composer test
+
+      - name: Verify generated reference
+        run: composer docs:check
+
+      - name: Reject release tags with open blockers
+        if: startsWith(github.ref, 'refs/tags/')
+        run: composer release:preflight
+
+      - name: Static analysis
+        run: composer analyse
+
+  style:
+    name: Coding standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      - run: composer update --prefer-dist --no-interaction --no-progress
+      - run: composer audit --locked
+      - run: composer format:check
