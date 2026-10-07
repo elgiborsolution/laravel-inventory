@@ -12,8 +12,11 @@ final class ListModulesCommand extends Command
 
     protected $description = 'Show bundled module activation and database migration status';
 
-    public function handle(Migrator $migrator): int
+    public function handle(): int
     {
+        // Laravel 9/10 register this service by name, without a Migrator class binding.
+        /** @var Migrator $migrator */
+        $migrator = $this->laravel->make('migrator');
         $databaseError = null;
         try {
             $repository = $migrator->getRepository();

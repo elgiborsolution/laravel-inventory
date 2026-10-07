@@ -4,6 +4,7 @@ namespace ESolution\Inventory\Tests\Feature;
 
 use ESolution\Inventory\Support\ModuleCatalog;
 use ESolution\Inventory\Tests\TestCase;
+use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\Schema;
 
 final class BundledModulesTest extends TestCase
@@ -106,5 +107,17 @@ final class BundledModulesTest extends TestCase
         $this->assertNotNull($this->app->getProvider(ModuleCatalog::all()['wms']['provider']));
         $this->assertNull($this->app->getProvider(ModuleCatalog::all()['retail']['provider']));
         $this->artisan('migrate')->assertSuccessful();
+    }
+
+    public function testModuleStatusWorksWithoutMigratorClassBinding(): void
+    {
+        // Load the deferred provider, then reproduce Laravel 9/10's named-only binding.
+        $this->assertInstanceOf(Migrator::class, $this->app->make('migrator'));
+        unset($this->app[Migrator::class]);
+        $this->assertFalse($this->app->bound(Migrator::class));
+
+        $this->artisan('inventory:modules')->expectsOutputToContain('pending')->assertSuccessful();
+        $this->artisan('migrate')->assertSuccessful();
+        $this->artisan('inventory:modules')->expectsOutputToContain('Not required')->assertSuccessful();
     }
 }
