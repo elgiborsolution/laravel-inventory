@@ -14,6 +14,8 @@ php artisan migrate
 
 For this monorepo development layout, register `packages/retail` as a Composer
 path repository in the host application before requiring `@dev`.
+Core must satisfy `^2.0`. See the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo)
+for path repositories and development version configuration.
 
 Enable Consignment in `config/inventory-retail.php`:
 

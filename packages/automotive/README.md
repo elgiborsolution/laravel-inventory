@@ -4,6 +4,10 @@ Independent package requiring only Inventory Core. No Work Order or vehicle
 tables are owned here. Enable AutomotiveServiceProvider and publish
 `inventory-automotive-config` in the host Laravel application.
 
+Requires Core `^2.0`. Follow the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo),
+using package `elgibor-solution/laravel-inventory-automotive` and publish tag
+`inventory-automotive-config`.
+
 Apply AutomotivePreset to stock Items to require receipt/issue serials and a
 valid `compliance` Certificate attached to the Core Serial. Existing tracking
 settings and certificate requirements are preserved. Certificate validity is

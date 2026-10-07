@@ -9,7 +9,7 @@ it does not waive open Core acceptance criteria or external integration blockers
 2. Install `elgibor-solution/laravel-inventory` in the Laravel host, then the selected
    `elgibor-solution/laravel-inventory-<vertical>` packages. Local development requires
    Composer path repositories pointing at the root and each selected package, with
-   a development branch alias satisfying the vertical's Core `^1.0` constraint.
+   a development version satisfying the vertical's Core `^2.0` constraint.
    Root dev autoload is a test convenience, not proof of independently published artifacts.
 3. Let Composer discover providers, or register Core before selected vertical providers.
 4. Publish `inventory-config` and applicable `inventory-<vertical>-config` tags.
@@ -23,6 +23,60 @@ it does not waive open Core acceptance criteria or external integration blockers
 7. In a disposable host, run `php artisan config:cache`, repeat validation and a
    receipt/issue smoke, then `php artisan config:clear`. This host cache cycle is
    not covered by the package coexistence smoke tests.
+
+### Installing optional packages from this monorepo
+
+A GitHub tag releases the repository, but does not automatically publish each
+`packages/*` directory as a separate Composer package. A VCS repository entry
+for this repository exposes the root Core package. To install optional packages
+from the same checkout, add path repositories to the Laravel host's
+`composer.json`, preserving its existing repository entries:
+
+```json
+"repositories": [
+    {
+        "type": "path",
+        "url": "D:/Project/inventori-package",
+        "options": {
+            "versions": {
+                "elgibor-solution/laravel-inventory": "2.0.x-dev"
+            }
+        }
+    },
+    {
+        "type": "path",
+        "url": "D:/Project/inventori-package/packages/*"
+    }
+]
+```
+
+Adjust paths to the checkout on your machine. The Core version override allows
+development branches to satisfy `^2.0`; it does not create a stable release.
+Use a checkout containing the corrected `^2.0` module dependencies: tag `2.0.0`
+still declared `^1.0` in its module manifests. Publish that correction in a new
+release rather than moving the existing tag.
+
+For example, install Retail from the Laravel host directory:
+
+```bash
+composer require "elgibor-solution/laravel-inventory:2.0.x-dev" "elgibor-solution/laravel-inventory-retail:@dev"
+php artisan vendor:publish --tag=inventory-config
+php artisan vendor:publish --tag=inventory-retail-config
+php artisan config:clear
+php artisan migrate
+php artisan inventory:validate-config
+```
+
+For Automotive or WMS, replace the Retail package suffix and publish tag with
+`automotive` or `wms`. The wildcard makes packages discoverable; only required
+packages are installed. Providers are auto-discovered. Retail and WMS load their
+migrations automatically; Automotive currently ships no migrations. On existing
+applications, inspect pending migrations and test on a staging database first.
+
+Path repositories require the checkout to exist during Composer installation,
+including in deployment environments. For installation without a manual clone,
+publish split repositories or a Composer repository with a separate artifact for
+each package. Keep deployed checkouts pinned to a reviewed commit or release.
 
 ## Package combinations and ownership
 

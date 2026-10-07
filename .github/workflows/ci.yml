@@ -57,6 +57,21 @@ jobs:
           "pestphp/pest:${{ matrix.pest }}"
           "larastan/larastan:${{ matrix.larastan }}"
 
+      # Compatibility coverage only: keep these findings visible in composer audit.
+      # Legacy audit.ignore is also supported by Composer's newer policy config.
+      - name: Allow known Laravel 9 advisories for compatibility testing
+        if: matrix.laravel == '9'
+        run: >-
+          composer config --json audit.ignore
+          '{
+            "PKSA-d5tc-s1qs-h781": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
+            "PKSA-m5cs-t1y6-qpcs": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
+            "PKSA-3r5d-mb8f-1qw9": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
+            "PKSA-mdq4-51ck-6kdq": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
+            "PKSA-8qx3-n5y5-vvnd": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
+            "PKSA-w7xr-vk7n-rstm": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."}
+          }'
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
@@ -64,7 +79,13 @@ jobs:
         run: composer validate --strict
 
       - name: Audit dependencies
+        id: audit
+        continue-on-error: ${{ matrix.laravel == '9' && !startsWith(github.ref, 'refs/tags/') }}
         run: composer audit --locked
+
+      - name: Report Laravel 9 compatibility audit findings
+        if: matrix.laravel == '9' && steps.audit.outcome == 'failure'
+        run: echo "::warning::Laravel 9 dependency audit failed. This job checks compatibility only; release-tag audits remain blocking."
 
       - name: Test
         run: composer test

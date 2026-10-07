@@ -24,6 +24,11 @@ the repository in the host project's `composer.json`:
 composer require elgibor-solution/laravel-inventory:@dev
 ```
 
+Optional modules under `packages/*` require Core `^2.0`. A GitHub release of this
+monorepo does not automatically publish those directories as separate Composer
+packages. For local/path installation, including development branch version
+configuration, follow the [optional module installation guide](docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo).
+
 ## Configuration
 
 The published `config/inventory.php` controls organization/storage depth,

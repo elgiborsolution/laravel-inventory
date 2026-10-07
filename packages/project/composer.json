@@ -10,7 +10,7 @@
   },
   "require": {
     "php": "^8.1",
-    "elgibor-solution/laravel-inventory": "^1.0"
+    "elgibor-solution/laravel-inventory": "^2.0"
   },
   "extra": {
     "laravel": {

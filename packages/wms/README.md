@@ -4,6 +4,10 @@
 installable vertical for physical warehouse orchestration. It depends only on
 Inventory Core and owns every `invw_*` table.
 
+Requires Core `^2.0`. Follow the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo),
+using package `elgibor-solution/laravel-inventory-wms` and publish tag
+`inventory-wms-config`.
+
 ## Strategy ownership
 
 `PutAwayStrategy` and `PickingStrategy` are WMS contracts. Core owns the stock
