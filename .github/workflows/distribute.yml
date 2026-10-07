@@ -1,0 +1,75 @@
+name: Distribute Composer packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published release tag (retry after CI succeeds)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inventory-composer-distribution
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Require successful CI for this commit
+        shell: bash
+        run: |
+          commit=$(git rev-parse HEAD)
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$commit&event=push&status=success" --jq '.total_count')
+          if [ "$count" -eq 0 ]; then
+            echo '::error::No successful push CI for this commit. Retry this workflow after CI passes.'
+            exit 1
+          fi
+      - name: Enforce existing release blockers
+        run: php tools/release-preflight.php
+      - name: Test distribution tooling
+        run: python -m unittest discover -s tools/tests -p 'test_distribution.py'
+      - name: Build runtime archives from the release tag
+        run: python tools/distribute.py build --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+      - name: Upload immutable release assets and rebuild full catalog
+        run: python tools/distribute.py publish --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Composer catalog
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -10,6 +10,11 @@ a General Ledger and does not own journal tables.
 
 ## Installation
 
+For optional modules without a local clone, configure the Composer repository
+published by the [distribution workflow](.github/workflows/distribute.yml).
+See [online installation and maintainer setup](docs/INSTALLATION.md).
+The catalog URL is usable only after its first successful release deployment.
+
 Panduan Bahasa Indonesia: [instalasi project baru dan project lama](docs/INSTALLATION.md),
 termasuk pemasangan seluruh sembilan modul, konfigurasi, migrasi data lama,
 integrasi Accounting/Approval, verifikasi, dan deployment.
