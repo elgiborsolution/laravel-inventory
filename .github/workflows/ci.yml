@@ -18,12 +18,12 @@ jobs:
           - php: '8.1'
             laravel: '9'
             testbench: '^7.0'
-            pest: '^2.36'
+            pest: '2.36.0'
             larastan: '^2.11'
           - php: '8.1'
             laravel: '10'
             testbench: '^8.0'
-            pest: '^2.36'
+            pest: '2.36.0'
             larastan: '^2.11'
           - php: '8.2'
             laravel: '11'
@@ -72,6 +72,21 @@ jobs:
             "PKSA-w7xr-vk7n-rstm": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."}
           }'
 
+      # Use the latest Laravel 11 patch line; do not exempt advisories fixed there.
+      - name: Configure Laravel 11 legacy compatibility testing
+        if: matrix.laravel == '11'
+        run: |
+          composer require --dev --no-update "laravel/framework:^11.57"
+          composer config --json audit.ignore '{"PKSA-d5tc-s1qs-h781":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."},"PKSA-m5cs-t1y6-qpcs":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."},"PKSA-3r5d-mb8f-1qw9":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."},"PKSA-mdq4-51ck-6kdq":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."}}'
+
+      # Pest 2.36.0 supports PHP 8.1 but conflicts with PHPUnit >10.5.36.
+      # Pest 2.36.1 requires PHP 8.2. Keep this legacy exception in CI only.
+      - name: Select PHP 8.1 compatible PHPUnit and report its known advisory
+        if: matrix.php == '8.1'
+        run: |
+          composer require --dev --no-update "phpunit/phpunit:10.5.36"
+          composer config --json audit.ignore.PKSA-z3gr-8qht-p93v '{"apply":"block","reason":"PHP 8.1 compatibility CI requires Pest 2.36.0 and PHPUnit 10.5.36; not a production exception."}'
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
@@ -80,12 +95,12 @@ jobs:
 
       - name: Audit dependencies
         id: audit
-        continue-on-error: ${{ matrix.laravel == '9' && !startsWith(github.ref, 'refs/tags/') }}
+        continue-on-error: ${{ (matrix.php == '8.1' || matrix.laravel == '11') && !startsWith(github.ref, 'refs/tags/') }}
         run: composer audit --locked
 
-      - name: Report Laravel 9 compatibility audit findings
-        if: matrix.laravel == '9' && steps.audit.outcome == 'failure'
-        run: echo "::warning::Laravel 9 dependency audit failed. This job checks compatibility only; release-tag audits remain blocking."
+      - name: Report legacy compatibility audit findings
+        if: (matrix.php == '8.1' || matrix.laravel == '11') && steps.audit.outcome == 'failure'
+        run: echo "::warning::Legacy dependency audit failed. This job checks compatibility only; release-tag audits remain blocking."
 
       - name: Test
         run: composer test
@@ -107,7 +122,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: '8.3'
           coverage: none
           tools: composer:v2
       - run: composer update --prefer-dist --no-interaction --no-progress

@@ -10,6 +10,10 @@ a General Ledger and does not own journal tables.
 
 ## Installation
 
+Panduan Bahasa Indonesia: [instalasi project baru dan project lama](docs/INSTALLATION.md),
+termasuk pemasangan seluruh sembilan modul, konfigurasi, migrasi data lama,
+integrasi Accounting/Approval, verifikasi, dan deployment.
+
 ```bash
 composer require elgibor-solution/laravel-inventory
 php artisan vendor:publish --tag=inventory-config
