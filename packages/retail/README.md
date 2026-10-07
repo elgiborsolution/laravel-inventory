@@ -1,21 +1,15 @@
 # Laravel Inventory Retail
 
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-retail-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
 `elgibor-solution/laravel-inventory-retail` is an optional vertical for
 `elgibor-solution/laravel-inventory`. It owns only the
 `ESolution\InventoryRetail` namespace and `invr_*` tables.
 
-## Installation
-
-```bash
-composer require elgibor-solution/laravel-inventory-retail
-php artisan vendor:publish --tag=inventory-retail-config
-php artisan migrate
-```
-
-For this monorepo development layout, register `packages/retail` as a Composer
-path repository in the host application before requiring `@dev`.
-Core must satisfy `^2.0`. See the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo)
-for path repositories and development version configuration.
+## Configuration after activation
 
 Enable Consignment in `config/inventory-retail.php`:
 

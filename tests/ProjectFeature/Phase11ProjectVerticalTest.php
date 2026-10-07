@@ -246,9 +246,9 @@ test('AC11-08 Project publishes no sector preset', function (): void {
     $root = dirname(__DIR__, 2) . '/packages/project';
     $provider = file_get_contents($root . '/src/ProjectServiceProvider.php');
 
-    expect(is_dir($root . '/config'))->toBeFalse()
-        ->and($provider)->not->toContain('mergeConfigFrom')
-        ->and($provider)->not->toContain('inventory-project-config')
+    expect(require $root . '/config/inventory-project.php')->toBe([])
+        ->and($provider)->toContain('mergeConfigFrom')
+        ->and($provider)->toContain('inventory-project-config')
         ->and(class_exists('ESolution\\InventoryProject\\Services\\ProjectPreset'))->toBeFalse();
 });
 

@@ -1,6 +1,11 @@
 # Laravel Inventory Healthcare
 
-`elgibor-solution/laravel-inventory-healthcare` is an independent vertical that
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-healthcare-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+`elgibor-solution/laravel-inventory-healthcare` is a bundled module that
 depends only on Inventory Core and owns all `invh_*` tables.
 
 `HealthcarePreset` merges mandatory receipt batch/expiry tracking, Core FEFO,

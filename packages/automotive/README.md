@@ -1,6 +1,11 @@
 # Inventory Automotive
 
-Independent package requiring only Inventory Core. No Work Order or vehicle
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-automotive-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+Bundled module using Inventory Core. No Work Order or vehicle
 tables are owned here. Enable AutomotiveServiceProvider and publish
 `inventory-automotive-config` in the host Laravel application.
 

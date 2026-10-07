@@ -1,7 +1,11 @@
 # Laravel Inventory WMS
 
-`elgibor-solution/laravel-inventory-wms` is an optional, independently
-installable vertical for physical warehouse orchestration. It depends only on
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-wms-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+`elgibor-solution/laravel-inventory-wms` is an optional bundled module for physical warehouse orchestration. It depends only on
 Inventory Core and owns every `invw_*` table.
 
 Requires Core `^2.0`. Follow the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo),

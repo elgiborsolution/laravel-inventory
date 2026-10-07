@@ -40,6 +40,16 @@ def build(tag, repository, output):
     ]
     if len(manifests) != 10:
         raise ValueError("Expected Core and nine module manifests")
+    for module_file in manifests[1:]:
+        module = json.loads(snapshot.read(module_file))
+        if module['require'].get(CORE) != '^2.0':
+            raise ValueError(module['name'] + ' must require Core ^2.0 before distribution')
+    # One distribution carries all runtime modules. Their manifests are retained
+    # as the local catalog, not published as independently installable artifacts.
+    module_manifests = manifests[1:]
+    manifests = ['composer.json']
+    if output.exists() and any(output.iterdir()):
+        raise ValueError('Output directory must be empty; choose a new --output directory')
     output.mkdir(parents=True, exist_ok=True)
     catalog = {"packages": {}}
     for manifest_path in manifests:
@@ -63,6 +73,16 @@ def build(tag, repository, output):
             relative = file[len(prefix):]
             if relative.startswith(("src/", "config/", "database/")) or relative in ("README.md", "LICENSE"):
                 contents[relative] = snapshot.read(file)
+            if re.fullmatch(r"packages/[^/]+/(?:composer\.json|README\.md|LICENSE|(?:src|config|database)/.+)", relative):
+                contents[relative] = snapshot.read(file)
+        for module_file in module_manifests:
+            module = json.loads(snapshot.read(module_file))
+            if manifest.get('replace', {}).get(module['name']) != '*':
+                raise ValueError('Bundled Core must replace ' + module['name'])
+            prefix_path = module_file.removesuffix('composer.json')
+            for namespace, target in module['autoload']['psr-4'].items():
+                if manifest['autoload']['psr-4'].get(namespace) != prefix_path + target:
+                    raise ValueError('Missing bundled runtime autoload: ' + namespace)
         contents.setdefault("LICENSE", snapshot.read("LICENSE"))
         # Validate runtime autoload targets before publishing broken archives.
         for target in manifest.get("autoload", {}).get("files", []):

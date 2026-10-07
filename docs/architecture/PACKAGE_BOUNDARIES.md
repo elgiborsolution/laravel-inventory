@@ -24,6 +24,15 @@ External packages retain their real identities:
 | Accounting | `elgibor-solution/laravel-accounting` | `ESolution\LaravelAccounting\` | `acc_` |
 | Approval | `e-solution/laravel-approval-flow` | `ESolution\ApprovalFlow\` | `approval_` |
 
+## Distribution and activation
+
+Core is the single installable bundle. All module namespaces use runtime autoload;
+module manifests remain internal metadata. Core's ModuleCatalog discovers their
+providers without importing their domain services. The host config file
+`inventory-<module>.php` controls registration; Core exposes publish tags even
+when a module is inactive. Core replaces standalone module Composer names.
+The boundaries below describe domain ownership, not separate installation.
+
 ## Binding Rules
 
 - A vertical may reference Core through PHP contracts and may FK from its own
