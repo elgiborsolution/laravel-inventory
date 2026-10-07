@@ -1,7 +1,11 @@
 # Laravel Inventory Manufacturing
 
-`elgibor-solution/laravel-inventory-manufacturing` is an independently
-installable vertical that depends only on Inventory Core. It owns all `invm_*`
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-manufacturing-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+`elgibor-solution/laravel-inventory-manufacturing` is a bundled module that depends only on Inventory Core. It owns all `invm_*`
 tables and does not implement stock posting or costing logic.
 
 ## BOM and production

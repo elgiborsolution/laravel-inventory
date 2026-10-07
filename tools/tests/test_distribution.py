@@ -26,7 +26,7 @@ class DistributionTest(unittest.TestCase):
                     (directory / "src" / "Provider.php").write_text("<?php // provider\n")
                     manifest = {
                         "name": distribution.CORE + ("" if directory == root else "-" + directory.name),
-                        "autoload": {"psr-4": {"Example\\": "src/"}},
+                        "autoload": {"psr-4": {("Example" + ("Core" if directory == root else directory.name) + "\\"): "src/"}},
                         "require": {"php": "^8.1"},
                         "extra": {"laravel": {"providers": ["Example\\Provider"]}},
                         "autoload-dev": {"psr-4": {"Test\\": "tests/"}},
@@ -34,6 +34,14 @@ class DistributionTest(unittest.TestCase):
                     if directory != root:
                         manifest["require"][distribution.CORE] = "^2.0"
                     (directory / "composer.json").write_text(json.dumps(manifest))
+                core_manifest = json.loads((root / 'composer.json').read_text())
+                core_manifest['replace'] = {}
+                for file in (root / 'packages').glob('*/composer.json'):
+                    module = json.loads(file.read_text())
+                    core_manifest['replace'][module['name']] = '*'
+                    for namespace, target in module['autoload']['psr-4'].items():
+                        core_manifest['autoload']['psr-4'][namespace] = 'packages/' + file.parent.name + '/' + target
+                (root / 'composer.json').write_text(json.dumps(core_manifest))
                 (root / "LICENSE").write_text("Test license")
                 (root / ".env").write_text("DO_NOT_SHIP=1")
                 (root / "vendor").mkdir()
@@ -47,7 +55,7 @@ class DistributionTest(unittest.TestCase):
                 (root / "src" / "Provider.php").write_text("uncommitted")
                 second = distribution.build("v2.0.2", "example/inventory", root / "second")
                 self.assertEqual(first, second)
-                self.assertEqual(len(first["packages"]), 10)
+                self.assertEqual(len(first["packages"]), 1)
                 for package, versions in first["packages"].items():
                     metadata = versions["2.0.2"]
                     filename = metadata["dist"]["url"].split("/")[-1]
@@ -55,7 +63,10 @@ class DistributionTest(unittest.TestCase):
                     self.assertEqual(content, (root / "second" / filename).read_bytes())
                     self.assertEqual(distribution.hashlib.sha1(content).hexdigest(), metadata["dist"]["shasum"])
                     with zipfile.ZipFile(root / "first" / filename) as archive:
-                        self.assertEqual(set(archive.namelist()), {"composer.json", "src/Provider.php", "LICENSE"})
+                        self.assertEqual(len([file for file in archive.namelist() if file.startswith('packages/')]), 18)
+                        self.assertNotIn('.env', archive.namelist())
+                        self.assertNotIn('vendor/secret', archive.namelist())
+                        self.assertIn('packages/wms/src/Provider.php', archive.namelist())
                         manifest = json.loads(archive.read("composer.json"))
                         self.assertEqual(manifest["name"], package)
                         self.assertNotIn("autoload-dev", manifest)

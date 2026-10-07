@@ -8,12 +8,7 @@
       "src/Support/helpers.php"
     ],
     "psr-4": {
-      "ESolution\\Inventory\\": "src/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "ESolution\\Inventory\\Tests\\": "tests/",
+      "ESolution\\Inventory\\": "src/",
       "ESolution\\InventoryAsset\\": "packages/asset/src/",
       "ESolution\\InventoryAutomotive\\": "packages/automotive/src/",
       "ESolution\\InventoryFood\\": "packages/food/src/",
@@ -23,6 +18,11 @@
       "ESolution\\InventoryProject\\": "packages/project/src/",
       "ESolution\\InventoryRetail\\": "packages/retail/src/",
       "ESolution\\InventoryWms\\": "packages/wms/src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ESolution\\Inventory\\Tests\\": "tests/"
     }
   },
   "require": {
@@ -70,5 +70,16 @@
         "ESolution\\Inventory\\InventoryServiceProvider"
       ]
     }
+  },
+  "replace": {
+    "elgibor-solution/laravel-inventory-asset": "*",
+    "elgibor-solution/laravel-inventory-automotive": "*",
+    "elgibor-solution/laravel-inventory-food": "*",
+    "elgibor-solution/laravel-inventory-healthcare": "*",
+    "elgibor-solution/laravel-inventory-library": "*",
+    "elgibor-solution/laravel-inventory-manufacturing": "*",
+    "elgibor-solution/laravel-inventory-project": "*",
+    "elgibor-solution/laravel-inventory-retail": "*",
+    "elgibor-solution/laravel-inventory-wms": "*"
   }
 }

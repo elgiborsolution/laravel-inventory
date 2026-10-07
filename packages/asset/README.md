@@ -1,6 +1,11 @@
 # Laravel Inventory Asset
 
-`elgibor-solution/laravel-inventory-asset` is an independent vertical that
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-asset-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+`elgibor-solution/laravel-inventory-asset` is a bundled module that
 depends only on Inventory Core and owns all `inva_*` tables.
 
 `AssetPreset` enables serialized receipt/issue tracking and marks an Item as

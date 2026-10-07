@@ -8,6 +8,7 @@ use ESolution\Inventory\Bridges\LaravelAccountingJournalGateway;
 use ESolution\Inventory\Bridges\LaravelApprovalWorkflowGateway;
 use ESolution\Inventory\Bridges\NullAccountingBridge;
 use ESolution\Inventory\Bridges\NullApprovalBridge;
+use ESolution\Inventory\Commands\ListModulesCommand;
 use ESolution\Inventory\Commands\ValidateAccountingCommand;
 use ESolution\Inventory\Commands\ValidateApprovalCommand;
 use ESolution\Inventory\Commands\ValidateConfigurationCommand;
@@ -33,6 +34,7 @@ use ESolution\Inventory\Services\TrackingPolicy;
 use ESolution\Inventory\Services\WorkflowEngine;
 use ESolution\Inventory\Support\ApprovalPackageInspector;
 use ESolution\Inventory\Support\DocumentTypeDefinition;
+use ESolution\Inventory\Support\ModuleCatalog;
 use Illuminate\Support\ServiceProvider;
 
 final class InventoryServiceProvider extends ServiceProvider
@@ -96,6 +98,12 @@ final class InventoryServiceProvider extends ServiceProvider
         $this->app->singleton(ResumeApprovedDocument::class);
         $this->app->singleton(InventoryManager::class);
         $this->app->alias(InventoryManager::class, 'inventory.manager');
+
+        foreach (ModuleCatalog::all() as $name => $module) {
+            if (is_file($this->app->configPath('inventory-' . $name . '.php'))) {
+                $this->app->register($module['provider']);
+            }
+        }
     }
 
     public function boot(): void
@@ -112,11 +120,19 @@ final class InventoryServiceProvider extends ServiceProvider
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
+        // Publishing must be available before the optional provider is activated.
+        foreach (ModuleCatalog::all() as $name => $module) {
+            $this->publishes([
+                $module['config'] => config_path('inventory-' . $name . '.php'),
+            ], 'inventory-' . $name . '-config');
+        }
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ValidateAccountingCommand::class,
                 ValidateApprovalCommand::class,
                 ValidateConfigurationCommand::class,
+                ListModulesCommand::class,
             ]);
         }
     }

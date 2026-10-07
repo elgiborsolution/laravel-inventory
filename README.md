@@ -10,10 +10,17 @@ a General Ledger and does not own journal tables.
 
 ## Installation
 
-For optional modules without a local clone, configure the Composer repository
-published by the [distribution workflow](.github/workflows/distribute.yml).
-See [online installation and maintainer setup](docs/INSTALLATION.md).
-The catalog URL is usable only after its first successful release deployment.
+Core now bundles all nine modules with runtime autoload. Install Core once;
+activate a module by publishing its configuration, then migrate on the next
+Artisan invocation. No module Composer require or activation boolean is needed.
+Existing published module configuration activates that module after upgrading.
+
+```bash
+php artisan config:clear
+php artisan vendor:publish --tag=inventory-wms-config
+php artisan migrate
+php artisan inventory:modules
+```
 
 Panduan Bahasa Indonesia: [instalasi project baru dan project lama](docs/INSTALLATION.md),
 termasuk pemasangan seluruh sembilan modul, konfigurasi, migrasi data lama,
@@ -33,10 +40,10 @@ the repository in the host project's `composer.json`:
 composer require elgibor-solution/laravel-inventory:@dev
 ```
 
-Optional modules under `packages/*` require Core `^2.0`. A GitHub release of this
-monorepo does not automatically publish those directories as separate Composer
-packages. For local/path installation, including development branch version
-configuration, follow the [optional module installation guide](docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo).
+Module code lives in `packages/*` inside the installed Core package. The Core
+manifest replaces the old standalone module package names to avoid duplicate
+classes. See the [upgrade guide](docs/INSTALLATION.md) before switching an existing
+installation with separately installed modules.
 
 ## Configuration
 
@@ -84,48 +91,48 @@ For Sales reservation, atomic partial fulfillment, walk-in sale, Purchasing
 receipt, and availability examples, see
 [Sales and Purchasing Integration](docs/SALES_PURCHASING_INTEGRATION.md).
 
-The optional Retail vertical is developed as the independent
+The optional Retail vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-retail` package under `packages/retail`.
 See [Retail package documentation](packages/retail/README.md) for stock-bearing
 variant matrices, Consignment, POS, and E-Commerce integration.
 
-The optional WMS vertical is developed as the independent
+The optional WMS vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-wms` package under `packages/wms`. See
 [WMS package documentation](packages/wms/README.md) for put-away/picking
 strategies, tasks, waves, LPNs, replenishment, cross-docking, and the TMS
 integration pattern.
 
-The optional Manufacturing vertical is developed as the independent
+The optional Manufacturing vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-manufacturing` package under
 `packages/manufacturing`. See [Manufacturing package documentation](packages/manufacturing/README.md)
 for immutable versioned BOMs, atomic production orchestration, WIP chaining,
 variance tracking, and the accounting blocker.
 
-The optional Healthcare vertical is developed as the independent
+The optional Healthcare vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-healthcare` package under
 `packages/healthcare`. See [Healthcare package documentation](packages/healthcare/README.md)
 for the tracking preset, Core-owned deterministic FEFO, controlled expired
 receipts, COA enforcement, recall veto, and forward traceability.
 
-The optional Food vertical is developed as the independent
+The optional Food vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-food` package under `packages/food`. See
 [Food package documentation](packages/food/README.md) for immutable versioned
 Recipes, idempotent MTO triggers, atomic RecipeBatch actual-cost roll-up, the
 Halal tracking preset, optional Core FEFO, and the accounting blocker.
 
-The optional Asset vertical is developed as the independent
+The optional Asset vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-asset` package under `packages/asset`. See
 [Asset package documentation](packages/asset/README.md) for serialized checkout,
 portable active-allocation protection, Reservation-based loans, derived overdue
 notification, and the documented Core serial-status limitation.
 
-The optional Project vertical is developed as the independent
+The optional Project vertical is bundled under the historical
 `elgibor-solution/laravel-inventory-project` package under `packages/project`.
 See [Project package documentation](packages/project/README.md) for exact
 Reservation-backed allocations, replenishment, atomic reallocation, partial
 material draw, and allocation reporting without new stock behavior or presets.
 
-The independent [Library package](packages/library/README.md) provides
+The bundled [Library module](packages/library/README.md) provides
 per-copy circulation, reservation-backed ready Holds, renewals, derived overdue,
 and fine records. Waiting Holds do not reserve stock.
 

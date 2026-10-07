@@ -1,6 +1,11 @@
 # Laravel Inventory Food
 
-`elgibor-solution/laravel-inventory-food` is an independent vertical that
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-food-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+`elgibor-solution/laravel-inventory-food` is a bundled module that
 depends only on Inventory Core and owns all `invf_*` tables.
 
 Published Recipe versions and their components are immutable. A `RecipeBatch`

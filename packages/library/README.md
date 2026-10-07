@@ -1,6 +1,11 @@
 # Inventory Library
 
-Independent package depending only on Inventory Core. Register
+Bundled installation: install Core once, then run `php artisan config:clear`,
+`php artisan vendor:publish --tag=inventory-library-config`, and
+`php artisan migrate`. Check `php artisan inventory:modules`. No separate module
+download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+
+Bundled module using Inventory Core. Register
 LibraryServiceProvider, run migrations, and optionally publish
 `inventory-library-config`. It owns only `invl_*` tables and imports no
 Asset or other vertical code.
