@@ -10,6 +10,13 @@ abstract class TestCase extends Orchestra
 {
     use BuildsInventoryScenario;
 
+    // Pest 1 forwards unknown fluent calls to the test case. Newer Pest versions
+    // implement todo() themselves; keep unfinished criteria incomplete on both.
+    public function todo(string $reason = ''): void
+    {
+        $this->markTestIncomplete($reason);
+    }
+
     protected function getPackageProviders($app): array
     {
         return [InventoryServiceProvider::class];
