@@ -6,7 +6,7 @@ of a successful run; retain actual CI results before claiming release compatibil
 | Laravel | PHP | Orchestra Testbench | Pest | Larastan |
 |---|---|---|---|---|
 | 9 | 8.1 | 7.x | 1.23.x | 2.x |
-| 10 | 8.1 | 8.x | 2.36.0 | 2.x |
+| 10 (>=10.50.3) | 8.1 | 8.x | 2.36.0 | 2.x |
 | 11 (>=11.57) | 8.2 | 9.x | 3.x | 2.x |
 | 12 | 8.2 | 10.x | 3.x | 3.x |
 | 13 | 8.3 | 11.x | 4.x | 3.x |
@@ -54,6 +54,15 @@ allows dependency resolution while preserving advisory reports. The setting is
 written only in the disposable CI checkout, not in the published manifest or a
 consumer application's Composer configuration. New advisory IDs still block
 resolution and require review.
+
+The Laravel 10 row selects framework `^10.50.3` in the disposable CI checkout.
+Besides its existing PHPUnit exception, it exempts only four framework advisories
+from dependency blocking: `PKSA-d5tc-s1qs-h781`, `PKSA-m5cs-t1y6-qpcs`,
+`PKSA-3r5d-mb8f-1qw9`, and `PKSA-mdq4-51ck-6kdq`. These remain visible in audits.
+The file-validation and environment-manipulation advisories fixed in earlier
+Laravel 10 patches are not exempted. The PHP step merges these IDs into
+`config.audit.ignore` without discarding existing entries. This does not change
+the published manifest's runtime constraints or consumer security configuration.
 
 The Laravel 11 row selects framework `^11.57` in the CI checkout and exempts
 only four advisories still affecting that version from dependency blocking:
