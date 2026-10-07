@@ -1,7 +1,8 @@
 # Panduan instalasi project baru dan project yang sudah berjalan
 
-Panduan ini memasang Inventory Core versi 2.x dan sembilan modul opsional dari satu
-checkout repository. Jalankan perintah Composer dan Artisan di root aplikasi
+Panduan ini memasang Inventory Core versi 2.x dan sembilan modul opsional dari
+satu repo, melalui distribusi online atau checkout lokal untuk pengembangan.
+Jalankan perintah Composer dan Artisan di root aplikasi
 Laravel tujuan (direktori yang memiliki `artisan`), bukan di direktori package.
 Contoh perintah ditulis satu baris agar dapat digunakan di PowerShell atau Bash.
 
@@ -44,7 +45,68 @@ Perintah berikutnya mengasumsikan aplikasi sudah tersedia. Tidak perlu menjalank
 `composer install` di checkout package untuk menggunakannya sebagai dependency host;
 dependency development package seperti Testbench digunakan untuk pengembangan package.
 
-## 3. Sumber package: satu repository GitHub
+## 3. Pilih satu sumber instalasi
+
+### A. Tanpa clone: Composer repository online
+
+Source tetap berada dalam satu repo. Workflow `Distribute Composer packages`
+membuat ZIP terpisah untuk Core dan sembilan modul di GitHub Releases, lalu
+menerbitkan `packages.json` kumulatif ke GitHub Pages. Modul dipasang ke
+`vendor/elgibor-solution/`, bukan ke folder `packages/` aplikasi pengguna.
+
+**Prasyarat:** maintainer harus menyelesaikan bagian 10 dan berhasil menjalankan
+workflow distribusi. URL di bawah adalah URL yang diharapkan untuk repo tersebut,
+bukan pernyataan bahwa layanan sudah aktif. Periksa bahwa
+`https://elgiborsolution.github.io/laravel-inventory/packages.json` dapat diakses
+dan berisi versi modul sebelum menjalankan Composer. Untuk fork/custom domain,
+gunakan URL Pages hasil deployment Anda.
+
+Jika sebelumnya memakai contoh repository lokal, hapus entri path Core/modul
+tersebut dari `composer.json` host. Contoh untuk nama entri pada percakapan migrasi:
+
+```bash
+composer config --unset repositories.local-inventory
+composer config --unset repositories.inventory-wms-local
+```
+
+Jalankan hanya untuk entri yang memang ada; entri array atau nama lain perlu
+disesuaikan. Repository path yang canonical dapat menghalangi versi online.
+Daftarkan repository distribusi, dengan tetap mempertahankan repository lain:
+
+```bash
+composer config repositories.inventory composer https://elgiborsolution.github.io/laravel-inventory
+```
+
+Pilih salah satu perintah sesuai fitur yang diperlukan (setelah tersedia rilis
+stabil 2.x dalam katalog):
+
+```bash
+# Core saja
+composer require "elgibor-solution/laravel-inventory:^2.0" --prefer-dist
+
+# Core dan WMS; Core dipasang otomatis sebagai dependency
+composer require "elgibor-solution/laravel-inventory:^2.0" "elgibor-solution/laravel-inventory-wms:^2.0" --prefer-dist
+
+# Core, Retail, dan WMS
+composer require "elgibor-solution/laravel-inventory:^2.0" "elgibor-solution/laravel-inventory-retail:^2.0" "elgibor-solution/laravel-inventory-wms:^2.0" --prefer-dist
+```
+
+Jika host masih mengunci Core sebagai `dev-main`, sertakan constraint Core `^2.0`
+seperti contoh saat berpindah ke rilis ZIP. `-W` hanya diperlukan bila ada konflik
+dependency terkunci yang memang perlu diperbarui; bukan solusi package tak ditemukan.
+
+Untuk seluruh modul:
+
+```bash
+composer require "elgibor-solution/laravel-inventory:^2.0" "elgibor-solution/laravel-inventory-retail:^2.0" "elgibor-solution/laravel-inventory-wms:^2.0" "elgibor-solution/laravel-inventory-manufacturing:^2.0" "elgibor-solution/laravel-inventory-healthcare:^2.0" "elgibor-solution/laravel-inventory-food:^2.0" "elgibor-solution/laravel-inventory-asset:^2.0" "elgibor-solution/laravel-inventory-project:^2.0" "elgibor-solution/laravel-inventory-automotive:^2.0" "elgibor-solution/laravel-inventory-library:^2.0" --prefer-dist
+```
+
+`@dev` tidak diperlukan untuk rilis stabil. Jika hanya tersedia prerelease,
+gunakan versi prerelease yang benar-benar tercantum di katalog secara eksplisit
+pada Core dan modul pilihan. Setelah Composer berhasil, lanjutkan ke bagian 4.
+Mengganti constraint tidak dapat menemukan modul yang belum didistribusikan.
+
+### B. Checkout lokal: untuk pengembangan package
 
 Repository: `https://github.com/elgiborsolution/laravel-inventory.git`.
 Jika checkout belum ada, clone di lokasi yang tersedia untuk host, misalnya:
@@ -87,13 +149,13 @@ versi development yang memenuhi `^2.0`, bukan label rilis stabil.
 Wildcard hanya mendaftarkan modul yang tersedia; tidak memasang semuanya.
 Lihat juga [Composer path repositories](https://getcomposer.org/doc/05-repositories.md#path).
 
-### Pasang Core saja
+#### Pasang Core saja dari path lokal
 
 ```bash
 composer require "elgibor-solution/laravel-inventory:2.0.x-dev"
 ```
 
-### Pasang Core dan modul pilihan
+#### Pasang Core dan modul pilihan dari path lokal
 
 Contoh Retail dan WMS:
 
@@ -101,7 +163,7 @@ Contoh Retail dan WMS:
 composer require "elgibor-solution/laravel-inventory:2.0.x-dev" "elgibor-solution/laravel-inventory-retail:@dev" "elgibor-solution/laravel-inventory-wms:@dev"
 ```
 
-### Pasang Core dan seluruh sembilan modul
+#### Pasang Core dan seluruh sembilan modul dari path lokal
 
 ```bash
 composer require "elgibor-solution/laravel-inventory:2.0.x-dev" "elgibor-solution/laravel-inventory-retail:@dev" "elgibor-solution/laravel-inventory-wms:@dev" "elgibor-solution/laravel-inventory-manufacturing:@dev" "elgibor-solution/laravel-inventory-healthcare:@dev" "elgibor-solution/laravel-inventory-food:@dev" "elgibor-solution/laravel-inventory-asset:@dev" "elgibor-solution/laravel-inventory-project:@dev" "elgibor-solution/laravel-inventory-automotive:@dev" "elgibor-solution/laravel-inventory-library:@dev"
@@ -322,16 +384,18 @@ sesuai di server/build environment. Jika menggunakan symlink, sumber juga harus
 tersedia saat runtime. Pin checkout sumber ke commit yang sama dengan hasil uji;
 lock file saja tidak membekukan isi direktori path yang masih dapat diedit.
 
-Untuk distribusi tanpa clone manual, terbitkan split repository atau artifact
-masing-masing modul melalui Composer repository. Mem-push satu tag monorepo saja
-belum menyediakan mekanisme tersebut. Ikuti urutan deployment host untuk migration,
+Untuk instalasi online bagian 3A, server tidak memerlukan checkout source lokal:
+Composer mengunduh ZIP dari URL dist yang tercatat di lock file. Pertahankan
+release assets lama agar instalasi dari lock tetap berhasil. Ikuti urutan deployment host untuk migration,
 cache konfigurasi, restart worker, serta aktivasi scheduler setelah staging lolos.
 
 ## 9. Masalah umum
 
 | Gejala | Pemeriksaan |
 |---|---|
-| Modul tidak ditemukan Composer | Tambahkan path `packages/*` pada manifest host; VCS root saja hanya mengekspos Core. |
+| Modul tidak ditemukan Composer | Online: periksa URL katalog dan versi yang telah diterbitkan. Lokal: daftarkan path `packages/*`. VCS root saja hanya mengekspos Core. |
+| `2.0.x-dev` tidak ditemukan | Versi ini khusus override path pada bagian 3B. Distribusi online memakai versi rilis katalog, bukan override lokal. |
+| Repository lokal memblokir `dev-main` atau versi rilis | Hapus/ganti entri path yang sudah tidak digunakan; jangan mencampur sumber Core tanpa menentukan prioritas. |
 | Core 2.x bertentangan dengan `^1.0` | Checkout modul belum berisi perbaikan constraint; pilih commit/rilis yang sudah diperbaiki. |
 | Minimum stability menolak modul lokal | Gunakan `:@dev` pada modul yang dipilih; tidak perlu mengubah seluruh host menjadi minimum-stability dev. |
 | Command/provider tidak ditemukan | Periksa package discovery dan autoload; jalankan `composer dump-autoload` dan `php artisan package:discover`. |
@@ -340,6 +404,68 @@ cache konfigurasi, restart worker, serta aktivasi scheduler setelah staging lolo
 | Composer menolak Laravel 9 karena advisory | Lihat matriks versi dan evaluasi upgrade host; pengecualian CI bukan perbaikan kerentanan. |
 | Posting modul ditolak ketika accounting aktif | Periksa batasan Manufacturing/Food/Automotive di bagian 7. |
 | Modul terpasang tetapi halaman/menu tidak ada | Buat integrasi UI/controller host; package menyediakan backend service. |
+
+## 10. Maintainer: aktifkan distribusi dari satu repo
+
+Patch menyediakan [workflow distribusi](../.github/workflows/distribute.yml) dan
+[builder](../tools/distribute.py). Tidak perlu membuat repo tambahan. Target
+workflow ini adalah repo publik agar URL Release assets dapat diunduh Composer
+tanpa autentikasi. Untuk repo privat, rancang registry/auth terpisah sebelum
+menggunakan URL publik contoh ini.
+
+1. Commit/push tooling dan dokumentasi, serta pastikan semua modul meminta Core
+   `^2.0`. Workflow harus ada di commit tag yang diterbitkan. Agar retry manual
+   tersedia di UI Actions, workflow juga harus ada pada default branch.
+2. Di GitHub **Settings > Pages > Build and deployment > Source**, pilih
+   **GitHub Actions**. Pastikan environment `github-pages` mengizinkan tag/ref
+   rilis dan deployment workflow. Pages akan digunakan untuk katalog Composer;
+   jangan menimpa website Pages lain tanpa merencanakan lokasi hosting katalog.
+3. Selesaikan blocker `IMPLEMENTATION_TODO.md`, jalankan
+   `php tools/release-preflight.php`, dan pastikan workflow CI untuk commit itu
+   berhasil. Pipeline distribusi tidak melewati gate ini. Blocker yang masih
+   terbuka berarti publikasi belum dapat dilanjutkan.
+4. Buat tag baru pada commit teruji, lalu publish GitHub Release untuk tag itu.
+   Format yang diterima: `2.x.y`/`v2.x.y`, atau prerelease seperti `v2.0.2-RC1`.
+   Semua sepuluh package memakai versi yang sama. Jangan mengubah tag lama.
+5. Event `release.published` menjalankan **Distribute Composer packages**. Jika
+   CI belum selesai, workflow gagal dengan pesan yang jelas; setelah CI lolos,
+   jalankan ulang melalui **Run workflow** dengan input tag rilis yang sama.
+6. Periksa Release assets: sepuluh ZIP dan `inventory-packages.json`. ZIP Core
+   hanya berisi runtime Core; ZIP modul menempatkan `composer.json`, `src`, config,
+   dan migration modul di root. Dev dependency, vendor, dan modul lain tidak
+   dibundel. Provider auto-discovery tetap disertakan.
+7. Periksa deployment Pages serta `packages.json`. Workflow menggabungkan metadata
+   seluruh release publik yang memiliki `inventory-packages.json`, sehingga versi
+   lama tidak hilang ketika rilis baru/versi lama diproses. Prerelease tetap
+   mengikuti aturan stability Composer. Release lama sebelum tooling ini tidak
+   otomatis dimasukkan karena tidak memiliki metadata/artifact terpisah.
+8. Uji instalasi pada host disposable melalui bagian 3A sebelum mengumumkan URL.
+
+Workflow memiliki izin write ke Release assets dan deploy Pages; tidak berjalan
+pada pull request. Ia memeriksa CI sukses untuk SHA yang sama dan menjalankan
+preflight release sebelum upload. Tidak ada dependency Composer yang dipasang oleh
+builder. Upload ulang membandingkan isi asset dan menolak perubahan pada nama yang
+sama, bukan memakai overwrite. Retry setelah upload/deploy parsial dapat memakai
+tag yang sama selama isi tetap identik. Jangan menghapus release/artifact lama
+yang masih digunakan lock file konsumen. Konflik versi metadata menggagalkan build.
+
+Untuk memeriksa tooling secara lokal (Python 3.10+ dan Git), tanpa instalasi package:
+
+```bash
+python -m unittest discover -s tools/tests -p test_distribution.py
+```
+
+Untuk membangun ZIP dari tag lokal yang telah memuat constraint benar, ganti
+`v2.0.2` berikut dengan tag Anda yang benar-benar tersedia:
+
+```bash
+python tools/distribute.py build --tag v2.0.2 --repository elgiborsolution/laravel-inventory
+```
+
+Output berada di `build/distribution` (diabaikan Git). Builder membaca snapshot
+tag, bukan perubahan working tree. Perintah build tidak upload, deploy, atau
+membuat tag. Subcommand `publish` dipakai workflow dengan GitHub CLI/token dan
+melakukan upload nyata; jangan menjalankannya untuk sekadar pengecekan lokal.
 
 Referensi lanjutan: [runbook rilis](ECOSYSTEM_RELEASE.md),
 [API/schema](SOURCE_REFERENCE.md), dan [batas antar-package](architecture/PACKAGE_BOUNDARIES.md).

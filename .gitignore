@@ -32,3 +32,5 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+/build/
+__pycache__/
