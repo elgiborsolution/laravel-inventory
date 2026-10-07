@@ -5,6 +5,11 @@ it does not waive open Core acceptance criteria or external integration blockers
 
 ## Install and configure
 
+For the complete Bahasa Indonesia walkthrough, see
+[installation for new and existing projects](INSTALLATION.md). It includes
+commands for all nine optional modules, master data setup, legacy cutover,
+external bridges, verification, and deployment.
+
 1. Use an empty development database. Baseline migrations do not upgrade legacy data.
 2. Install `elgibor-solution/laravel-inventory` in the Laravel host, then the selected
    `elgibor-solution/laravel-inventory-<vertical>` packages. Local development requires
