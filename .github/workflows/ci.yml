@@ -95,7 +95,18 @@ jobs:
         if: matrix.php == '8.1'
         run: |
           composer require --dev --no-update "phpunit/phpunit:10.5.36"
-          composer config --json audit.ignore.PKSA-z3gr-8qht-p93v '{"apply":"block","reason":"PHP 8.1 compatibility CI requires Pest 2.36.0 and PHPUnit 10.5.36; not a production exception."}'
+          # Composer does not support writing individual audit.ignore.<ID> keys.
+          # Merge into the existing map so Laravel advisory exceptions survive.
+          php <<'PHP'
+          <?php
+          $path = 'composer.json';
+          $manifest = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+          $manifest['config']['audit']['ignore']['PKSA-z3gr-8qht-p93v'] = [
+              'apply' => 'block',
+              'reason' => 'PHP 8.1 compatibility CI requires Pest 2.36.0 and PHPUnit 10.5.36; not a production exception.',
+          ];
+          file_put_contents($path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
+          PHP
 
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
