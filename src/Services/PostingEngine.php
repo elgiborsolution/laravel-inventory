@@ -242,7 +242,7 @@ final class PostingEngine
             'posting_completed_at' => now(),
         ])->save();
 
-        event(new DocumentPosted($document->refresh()->load('lines')));
+        DocumentPosted::dispatchAfterCommit($document->refresh()->load('lines'));
     }
 
     private function createAndValidateLine(

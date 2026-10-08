@@ -5,8 +5,8 @@ of a successful run; retain actual CI results before claiming release compatibil
 
 | Laravel | PHP | Orchestra Testbench | Pest | Larastan |
 |---|---|---|---|---|
-| 9 | 8.1 | 7.x | 2.36.0 | 2.x |
-| 10 | 8.1 | 8.x | 2.36.0 | 2.x |
+| 9 | 8.1 | 7.x | 1.23.x | 2.x |
+| 10 (>=10.50.3) | 8.1 | 8.x | 2.36.0 | 2.x |
 | 11 (>=11.57) | 8.2 | 9.x | 3.x | 2.x |
 | 12 | 8.2 | 10.x | 3.x | 3.x |
 | 13 | 8.3 | 11.x | 4.x | 3.x |
@@ -15,16 +15,35 @@ SQLite is used for the fast package suite. Posting/concurrency and migration
 portability must additionally run against current supported MySQL and PostgreSQL
 in the integration pipeline before GA.
 
+### Laravel 9 runtime compatibility
+
+Laravel 9 does not provide `ShouldDispatchAfterCommit`. Core posting, transfers,
+and reversals use `DocumentPosted::dispatchAfterCommit()` instead: a callback on
+the document's database connection defers delivery until the outer transaction
+commits and is discarded on rollback. Without an active transaction delivery is
+immediate. Host code that emits this event should use this method, not
+`event(new DocumentPosted(...))`, which dispatches immediately.
+
+Module tests isolate config/bootstrap paths through Application path overrides;
+they do not call `useConfigPath()` or `useBootstrapPath()`, absent in Laravel 9.
+These fixes do not close the broader event lifecycle/release acceptance checklist.
+
 ### PHP 8.1 compatibility tools
 
-Both PHP 8.1 rows pin Pest to `2.36.0` and PHPUnit to `10.5.36` in the disposable
-CI checkout. Pest 2.36.0 requires PHPUnit `^10.5.36` but also conflicts with every
+Laravel 9 uses Testbench 7, Pest `^1.23.1`, and PHPUnit `^9.6.34`. Testbench 7
+requires PHPUnit 9; Pest 2 and PHPUnit 10 cannot be combined with it. CI selects
+`phpunit9.xml.dist` for this row because the default PHPUnit 11 XML schema is not
+compatible with PHPUnit 9. The TestCase todo fallback keeps unfinished criteria
+incomplete when running Pest 1; it does not mark them as passed.
+
+Only Laravel 10 / PHP 8.1 pins Pest to `2.36.0` and PHPUnit to `10.5.36` in the
+disposable CI checkout. Pest 2.36.0 requires PHPUnit `^10.5.36` but also conflicts with every
 version above `10.5.36`; Pest 2.36.1 requires PHP 8.2. Updating with `-W` does not
 resolve that combination on PHP 8.1.
 
 PHPUnit 10.5.36 is affected by `PKSA-z3gr-8qht-p93v` (unsafe deserialization in
-PHPT coverage handling), fixed in the 10.x series in 10.5.62. Only the PHP 8.1
-compatibility jobs add a block-only exception for that advisory. This does not
+PHPT coverage handling), fixed in the 10.x series in 10.5.62. Only the Laravel 10 /
+PHP 8.1 compatibility job adds a block-only exception for that advisory. This does not
 fix the vulnerability or establish security support for these test tools.
 New advisory IDs still block dependency resolution.
 
@@ -48,6 +67,15 @@ allows dependency resolution while preserving advisory reports. The setting is
 written only in the disposable CI checkout, not in the published manifest or a
 consumer application's Composer configuration. New advisory IDs still block
 resolution and require review.
+
+The Laravel 10 row selects framework `^10.50.3` in the disposable CI checkout.
+Besides its existing PHPUnit exception, it exempts only four framework advisories
+from dependency blocking: `PKSA-d5tc-s1qs-h781`, `PKSA-m5cs-t1y6-qpcs`,
+`PKSA-3r5d-mb8f-1qw9`, and `PKSA-mdq4-51ck-6kdq`. These remain visible in audits.
+The file-validation and environment-manipulation advisories fixed in earlier
+Laravel 10 patches are not exempted. The PHP step merges these IDs into
+`config.audit.ignore` without discarding existing entries. This does not change
+the published manifest's runtime constraints or consumer security configuration.
 
 The Laravel 11 row selects framework `^11.57` in the CI checkout and exempts
 only four advisories still affecting that version from dependency blocking:

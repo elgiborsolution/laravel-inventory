@@ -4,6 +4,7 @@ namespace ESolution\Inventory\Tests\Feature;
 
 use ESolution\Inventory\Support\ModuleCatalog;
 use ESolution\Inventory\Tests\TestCase;
+use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\Schema;
 
 final class BundledModulesTest extends TestCase
@@ -20,10 +21,24 @@ final class BundledModulesTest extends TestCase
 
     protected function resolveApplication()
     {
-        $app = parent::resolveApplication();
-        $app->useBootstrapPath($this->moduleConfigPath);
+        // Laravel 9 has neither useBootstrapPath() nor useConfigPath(). Keep
+        // Testbench's skeleton base path and override only the isolated paths.
+        return new class (parent::resolveApplication()->basePath(), $this->moduleConfigPath) extends \Illuminate\Foundation\Application {
+            public function __construct($basePath, private string $isolatedPath)
+            {
+                parent::__construct($basePath);
+            }
 
-        return $app;
+            public function bootstrapPath($path = '')
+            {
+                return $this->isolatedPath . ($path === '' ? '' : '/' . $path);
+            }
+
+            public function configPath($path = '')
+            {
+                return $this->isolatedPath . ($path === '' ? '' : '/' . $path);
+            }
+        };
     }
 
     protected function resolveApplicationConfiguration($app)
@@ -38,8 +53,6 @@ final class BundledModulesTest extends TestCase
 
     protected function getPackageProviders($app): array
     {
-        $app->useConfigPath($this->moduleConfigPath);
-
         return parent::getPackageProviders($app);
     }
 
@@ -106,5 +119,17 @@ final class BundledModulesTest extends TestCase
         $this->assertNotNull($this->app->getProvider(ModuleCatalog::all()['wms']['provider']));
         $this->assertNull($this->app->getProvider(ModuleCatalog::all()['retail']['provider']));
         $this->artisan('migrate')->assertSuccessful();
+    }
+
+    public function testModuleStatusWorksWithoutMigratorClassBinding(): void
+    {
+        // Load the deferred provider, then reproduce Laravel 9/10's named-only binding.
+        $this->assertInstanceOf(Migrator::class, $this->app->make('migrator'));
+        unset($this->app[Migrator::class]);
+        $this->assertFalse($this->app->bound(Migrator::class));
+
+        $this->artisan('inventory:modules')->expectsOutputToContain('pending')->assertSuccessful();
+        $this->artisan('migrate')->assertSuccessful();
+        $this->artisan('inventory:modules')->expectsOutputToContain('Not required')->assertSuccessful();
     }
 }
