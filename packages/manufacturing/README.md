@@ -55,3 +55,75 @@ only while Core resolves `NullAccountingBridge`, Core accounting is disabled,
 and `inventory-manufacturing.accounting.enabled` is false. No Manufacturing
 service codes are guessed. Enabling either setting before verified service
 codes are published rejects the operation before any stock effect.
+
+
+## Contoh service
+
+Ikuti [konvensi payload, hasil, dan error](../../docs/SALES_PURCHASING_INTEGRATION.md#konvensi-contoh-dan-error).
+JSON model di bawah merupakan proyeksi field terpilih, bukan seluruh serialisasi
+Eloquent. ID ilustratif harus diganti dengan master host yang valid.
+
+Prasyarat: barang output ID 2 dan bahan ID 1 aktif dengan tipe diizinkan, UOM 1,
+serta bahan tersedia di gudang 1. Accounting Core/modul harus nonaktif dengan
+NullAccountingBridge. Contoh memakai bahan tanpa tracking dan tidak memakai
+approval agar penyelesaian menghasilkan kedua posting dalam transaksi yang sama.
+
+```php
+use ESolution\InventoryManufacturing\Services\BomService;
+use ESolution\InventoryManufacturing\Services\ProductionOrderService;
+use ESolution\InventoryManufacturing\DTO\BomComponentData;
+use ESolution\InventoryManufacturing\DTO\ProductionOrderData;
+
+$definitions = app(BomService::class);
+$definition = $definitions->create('BOM-001', 'Produk contoh', 2);
+$version = $definitions->createVersion(
+    $definition->id, 1, [new BomComponentData(itemId: 1, uomId: 1, qty: 2)],
+);
+$version = $definitions->activate($version->id);
+$service = app(ProductionOrderService::class);
+$order = $service->create(new ProductionOrderData(
+    orderNo: 'PROD-001', bomVersionId: $version->id,
+    organizationId: 1, warehouseId: 1, plannedQty: 3,
+));
+$order = $service->complete(
+    $order->id, actualOutputQty: 3,
+    actualComponentQtyByItem: [1 => 6], trxDate: '2026-10-08',
+);
+$result = ['id' => $order->id, 'status' => $order->status,
+    'actual_output_qty' => (float) $order->actual_output_qty,
+    'actual_component_cost' => (float) $order->actual_component_cost,
+    'output_unit_cost' => (float) $order->output_unit_cost];
+```
+
+Jika biaya bahan 5000/unit, proyeksi hasil complete adalah:
+
+```json
+{"id":1,"status":"completed","actual_output_qty":3,"actual_component_cost":30000,"output_unit_cost":10000}
+```
+
+| Method | Input / default | Hasil, efek, dan retry |
+|---|---|---|
+| `BomService::create` | code/name:string nonkosong, outputItemId:int | Model BOM; membuat master, tidak idempotent berdasarkan request key. Kode duplikat dapat ditolak constraint. |
+| `createVersion` | ID master:int, outputQty:float >0, components:list<BomComponentData> tidak kosong; effectiveFrom/effectiveTo:?string=null | Model versi draft dengan components; setiap panggilan membuat versi baru. Component DTO: itemId/uomId:int, qty:float >0, sequence:int=0. |
+| `activate` | versionId:int | Versi status active, data kemudian immutable. Pemanggilan ulang versi tersebut mengembalikan versi yang sudah aktif/published. |
+| `assertVersionItems` | Model versi | void; memeriksa output dan bahan masih aktif/diizinkan. Contoh `$definitions->assertVersionItems($version)`. |
+| `ProductionOrderService::create` | DTO ProductionOrderData di atas | Model order status planned; belum ada perubahan stok. Nomor yang sudah ada memeriksa field identitas. |
+| `complete` | ID order:int, actualOutputQty:float >0; actualComponentQtyByItem=[], componentLocationByItem=[], outputLocationId=null, trxDate=null (hari ini) | Model completed dengan cost dan referensi dokumen; konsumsi bahan + penerimaan hasil atomik. Retry completed mengembalikan hasil lama, tidak mengoreksi qty dengan payload baru. |
+
+`actualComponentQtyByItem` berbentuk map itemId=>qty; key yang tidak ada di versi
+ditolak. Tanpa override, kebutuhan mengikuti plannedQty/outputQty versi. Kuantitas
+bahan boleh nol untuk melewati bahan, tetapi minimal satu bahan harus dikonsumsi.
+`componentLocationByItem` berbentuk itemId=>storageLocationId; siapkan lokasi jika
+scope rack. Seluruh perubahan rollback bila salah satu posting gagal.
+
+Contoh error: versi belum active, output/komponen tidak aktif, bahan
+menduplikasi item atau mengonsumsi outputnya sendiri, stok kurang, accounting aktif.
+`complete()` bukan endpoint edit produksi; buat alur koreksi host jika perlu.
+
+ProductionOrderData wajib: orderNo:string, bomVersionId/organizationId/warehouseId:int,
+plannedQty:float. Opsional: sourceMode='mts', sourceType/sourceId=null,
+parentOrderId=null, meta=[]. Mode mts/mto/bto/ato; mode selain mts memerlukan
+sourceType/sourceId. parentOrderId menghubungkan WIP; output parent harus menjadi
+komponen child dan parent selesai sebelum child diselesaikan. Completion juga
+mencatat variances. `ManufacturingAccountingGuard::assertDisabled()` -> void,
+melempar DomainException bila accounting tidak memenuhi syarat; dipakai internal.

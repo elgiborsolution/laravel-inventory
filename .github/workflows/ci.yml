@@ -25,15 +25,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - php: '8.1'
+          - php: '8.2'
             laravel: '9'
             testbench: '^7.0'
             pest: '^1.23.1'
             larastan: '^2.11'
-          - php: '8.1'
+          - php: '8.2'
             laravel: '10'
             testbench: '^8.0'
-            pest: '2.36.0'
+            pest: '^2.36.1'
             larastan: '^2.11'
           - php: '8.2'
             laravel: '11'
@@ -95,12 +95,11 @@ jobs:
           composer require --dev --no-update "phpunit/phpunit:^9.6.34"
           cp phpunit9.xml.dist phpunit.xml
 
-      # Laravel 10: Pest 2.36.0 supports PHP 8.1 but conflicts with PHPUnit >10.5.36.
-      # Pest 2.36.1 requires PHP 8.2. Keep this legacy exception in CI only.
+      # Laravel 10 runs on PHP 8.2; let Pest select a compatible PHPUnit patch.
       - name: Configure Laravel 10 framework and PHPUnit compatibility
-        if: matrix.laravel == '10' && matrix.php == '8.1'
+        if: matrix.laravel == '10'
         run: |
-          composer require --dev --no-update "laravel/framework:^10.50.3" "phpunit/phpunit:10.5.36"
+          composer require --dev --no-update "laravel/framework:^10.50.3"
           # Composer does not support writing individual audit.ignore.<ID> keys.
           # Merge into the existing map so Laravel advisory exceptions survive.
           php <<'PHP'
@@ -115,10 +114,6 @@ jobs:
                   'reason' => 'Laravel 10 compatibility CI only; not a production exception.',
               ];
           }
-          $manifest['config']['audit']['ignore']['PKSA-z3gr-8qht-p93v'] = [
-              'apply' => 'block',
-              'reason' => 'Laravel 10 / PHP 8.1 compatibility CI requires Pest 2.36.0 and PHPUnit 10.5.36; not a production exception.',
-          ];
           file_put_contents($path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
           PHP
 
@@ -130,11 +125,11 @@ jobs:
 
       - name: Audit dependencies
         id: audit
-        continue-on-error: ${{ (matrix.php == '8.1' || matrix.laravel == '11') && !startsWith(github.ref, 'refs/tags/') }}
+        continue-on-error: ${{ (matrix.laravel == '9' || matrix.laravel == '10' || matrix.laravel == '11') && !startsWith(github.ref, 'refs/tags/') }}
         run: composer audit --locked
 
       - name: Report legacy compatibility audit findings
-        if: (matrix.php == '8.1' || matrix.laravel == '11') && steps.audit.outcome == 'failure'
+        if: (matrix.laravel == '9' || matrix.laravel == '10' || matrix.laravel == '11') && steps.audit.outcome == 'failure'
         run: echo "::warning::Legacy dependency audit failed. This job checks compatibility only; release-tag audits remain blocking."
 
       - name: Test

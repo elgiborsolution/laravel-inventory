@@ -27,7 +27,7 @@ class DistributionTest(unittest.TestCase):
                     manifest = {
                         "name": distribution.CORE + ("" if directory == root else "-" + directory.name),
                         "autoload": {"psr-4": {("Example" + ("Core" if directory == root else directory.name) + "\\"): "src/"}},
-                        "require": {"php": "^8.1"},
+                        "require": {"php": ">=8.2"},
                         "extra": {"laravel": {"providers": ["Example\\Provider"]}},
                         "autoload-dev": {"psr-4": {"Test\\": "tests/"}},
                     }

@@ -99,3 +99,68 @@ and roll back inventory. During upgrade, add these mappings before enabling the
 affected operations; existing generic COGS mappings alone are insufficient.
 Integration tests use the fake gateway; real accounting catalog compatibility and
 balanced tax-inclusive journals must still be verified in the host environment.
+
+
+## Contoh payload dan hasil gateway
+
+Bridge dipanggil PostingEngine dalam transaksi; controller memanggil
+`Inventory::post()` dan tidak perlu membuat jurnal kedua. AccountingPostingData
+membawa totalCost:float, direction:string, additionalJournalLines:array=[],
+serviceCode:?string=null, tenantIdentity:mixed=null. Nilai biaya dihitung Core,
+bukan dipercaya dari request pengguna.
+
+Contoh input host untuk pembelian 10 @40000 tanpa pajak:
+
+```php
+use ESolution\Inventory\DTO\DocumentData;
+use ESolution\Inventory\DTO\LineData;
+use ESolution\Inventory\Facades\Inventory;
+
+$document = Inventory::post(new DocumentData(
+    type: 'purchase_receipt', organizationId: 1, trxDate: '2026-10-08',
+    externalId: 'PI-001', lines: [new LineData(1, 1, 1, 10, unitCost: 40000)],
+    additionalJournalLines: [['mapping_key' => 'purchase_credit_ap_k', 'amount' => 400000]],
+    tenantIdentity: 'tenant-1',
+));
+```
+
+Dengan mapping PURCHASE_CREDIT, payload yang masuk ke `AccountingJournalGateway::post`
+(kode mapping harus benar-benar tersedia pada sistem accounting host):
+
+```json
+{
+  "service_code":"PURCHASE_CREDIT","trx_date":"2026-10-08",
+  "source_type":"ESolution\\Inventory\\Models\\Document","source_id":1,
+  "items":[
+    {"mapping_key":"purchase_credit_ap_k","amount":400000},
+    {"mapping_key":"purchase_credit_inventory_d","amount":400000}
+  ]
+}
+```
+
+Tenant dikirim sebagai argumen kedua; LaravelAccountingJournalGateway dapat
+menambahkannya ke payload pada tenant_payload_key yang dikonfigurasi. Morph map
+host dapat mengubah source_type. Gateway memanggil JournalService eksternal dan
+mengembalikan ID jurnal berupa **string**, misalnya `"123"`, bukan model Document.
+`Inventory::post()` tetap mengembalikan Document Core; ID jurnal tidak otomatis
+menjadi atribut response Document.
+
+| Kontrak / method | Input contoh | Hasil / efek |
+|---|---|---|
+| `AccountingBridge::post` | Document + AccountingPostingData | ?string ID jurnal; null pada Null bridge, mapping explicit null, atau count tanpa mutasi. |
+| `AccountingBridge::reverse` | Document asal + reason:string | void; mencari jurnal asli lalu memanggil gateway reverse, tanpa efek jika tidak ditemukan. Bukan API reversal stok dengan bridge aktif. |
+| `AccountingJournalGateway::post` | array payload di atas, tenantIdentity=null | string ID, misalnya "123"; adaptor default mengharapkan journalByMapping mengembalikan objek ber-ID. |
+| `findOriginalJournalId` | sourceType:string, sourceId:int/string | ?string, null jika belum ada jurnal non-reversal. |
+| `reverse` | journalId:string, reason:string, tenantIdentity=null | void; hasil/retry ditentukan sistem accounting eksternal. |
+
+Support service internal: `ServiceCodeResolver::resolve('purchase_receipt')`
+menghasilkan `PURCHASE_CREDIT` pada config default; callerSelection opsional harus
+diizinkan. `MappingKeyGuard::assertSafe($lines, 'PURCHASE_CREDIT')` -> void atau
+AccountingMappingIncompleteException bila prefix/nilai tidak valid. Jangan memakai
+mapping contoh sebagai jaminan keberadaan akun eksternal.
+
+Contoh kegagalan: kode service hilang, mapping role return/gain/loss hilang, atau
+`Accounting JournalService did not return a journal id.` Exception dikembalikan ke
+posting dan transaksi lokal dibatalkan. Efek di sistem eksternal tetap memerlukan
+jaminan transaksi/idempotency adaptor; retry aplikasi memakai externalId Core yang
+sama. Paket ini tidak menjanjikan distributed rollback untuk layanan remote.

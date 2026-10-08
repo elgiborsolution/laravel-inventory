@@ -27,7 +27,7 @@ Keberadaan tag GitHub tidak menutup blocker yang masih didokumentasikan.
 1. Sediakan aplikasi Laravel, PHP CLI, Composer, dan database development/staging.
 2. Periksa `php -v`, `composer --version`, dan `php artisan --version`.
 3. Cocokkan versi dengan [matriks kompatibilitas](architecture/SUPPORTED_VERSIONS.md).
-   Core mendeklarasikan PHP `^8.1` dan Illuminate 9–13; persyaratan PHP Laravel
+   Core dan sembilan modul mensyaratkan PHP `>=8.2` dan Illuminate 9–13; persyaratan PHP Laravel
    yang dipakai tetap berlaku. Laravel 9 dapat diblokir advisory keamanan.
    Pengecualian pada CI package bukan konfigurasi instalasi produksi.
 4. Atur koneksi database pada `.env` host, kemudian jalankan `php artisan config:clear`.
@@ -70,17 +70,19 @@ php artisan inventory:modules
 Daftarkan hanya root checkout, bukan `packages/*`, pada manifest host:
 
 ```json
-"repositories": [
-    {
-        "type": "path",
-        "url": "D:/Project/inventori-package",
-        "options": {
-            "versions": {
-                "elgibor-solution/laravel-inventory": "2.0.x-dev"
+{
+    "repositories": [
+        {
+            "type": "path",
+            "url": "D:/Project/inventori-package",
+            "options": {
+                "versions": {
+                    "elgibor-solution/laravel-inventory": "2.0.x-dev"
+                }
             }
         }
-    }
-]
+    ]
+}
 ```
 
 ```bash
@@ -172,6 +174,11 @@ sebelum menjalankannya. Jangan mengganti nama migration package lalu menjalankan
 salinannya sebagai migration baru.
 
 ## 5. Master data dan pengaktifan fitur
+
+Setelah instalasi, gunakan [panduan input dan hasil service](SALES_PURCHASING_INTEGRATION.md#panduan-input-dan-hasil-service)
+untuk parameter wajib/opsional, contoh DTO/payload, proyeksi hasil, dampak transaksi,
+serta aturan error/retry. Contoh service tiap modul tersedia pada README yang
+ditautkan di tabel berikut.
 
 Setelah migration, buat master melalui seeder/service host: organisasi dan gudang,
 kategori barang, satuan dasar, barang, serta lokasi penyimpanan sesuai kebutuhan.
