@@ -293,7 +293,7 @@ final class TransferReversalService
         $this->workflow->transition($document, DocumentStatus::POSTED);
         $document->forceFill(['posted_at' => now(), 'posting_started_at' => now(), 'posting_completed_at' => now(),
             'posting_marker' => 'document:' . $document->id])->save();
-        event(new DocumentPosted($document->load('lines')));
+        DocumentPosted::dispatchAfterCommit($document->load('lines'));
 
         return $document;
     }

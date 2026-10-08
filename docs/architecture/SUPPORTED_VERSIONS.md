@@ -15,6 +15,19 @@ SQLite is used for the fast package suite. Posting/concurrency and migration
 portability must additionally run against current supported MySQL and PostgreSQL
 in the integration pipeline before GA.
 
+### Laravel 9 runtime compatibility
+
+Laravel 9 does not provide `ShouldDispatchAfterCommit`. Core posting, transfers,
+and reversals use `DocumentPosted::dispatchAfterCommit()` instead: a callback on
+the document's database connection defers delivery until the outer transaction
+commits and is discarded on rollback. Without an active transaction delivery is
+immediate. Host code that emits this event should use this method, not
+`event(new DocumentPosted(...))`, which dispatches immediately.
+
+Module tests isolate config/bootstrap paths through Application path overrides;
+they do not call `useConfigPath()` or `useBootstrapPath()`, absent in Laravel 9.
+These fixes do not close the broader event lifecycle/release acceptance checklist.
+
 ### PHP 8.1 compatibility tools
 
 Laravel 9 uses Testbench 7, Pest `^1.23.1`, and PHPUnit `^9.6.34`. Testbench 7
