@@ -54,3 +54,65 @@ use those capabilities directly from the external package.
 Re-audit the adapter whenever the external package changes its major version,
 especially the `checkApprovalRequired()` and `submit()` signatures, status
 vocabulary, state-driver configuration, and workflow table fields.
+
+
+## Contoh input dan hasil
+
+Ini kontrak bridge internal, bukan endpoint HTTP yang tersedia otomatis. Aplikasi
+memanggil `Inventory::post(DocumentData)` seperti [panduan Core](SALES_PURCHASING_INTEGRATION.md#panduan-input-dan-hasil-service).
+Tambahkan approvalAction='create', approvalData (array tambahan), approvalMetadata
+(array metadata submission), dan tenantIdentity bila diperlukan. PostingEngine
+mengirim data dokumen dan detail lines ke bridge.
+
+Contoh argumen `ApprovalWorkflowGateway::checkApprovalRequired()` yang diproyeksikan
+sebagai JSON (data/detailData dapat memiliki field tambahan dari Core):
+
+```json
+{
+  "module":"purchase_receipt","action":"create",
+  "data":{"document_id":1,"document_type":"purchase_receipt","organization_id":1,"trx_date":"2026-10-08"},
+  "detailData":[{"item_id":1,"warehouse_id":1,"qty":10,"unit_cost":40000}],
+  "tenantId":"tenant-1"
+}
+```
+
+Contoh hasil gateway:
+
+```json
+{"required":true,"workflow_id":10,"rule_id":20}
+```
+
+Jika approval tidak diperlukan, hasil dapat `{"required":false}`. Jika diperlukan,
+workflow_id/rule_id wajib ada; bila tidak ada, ApprovalConfigurationException
+menggagalkan posting. Bridge memanggil `submit()` dengan parameter berikut:
+
+```json
+{"module":"purchase_receipt","approvableType":"ESolution\\Inventory\\Models\\Document","approvableId":"1","workflowId":10,"ruleId":20,"metadata":{},"tenantId":"tenant-1"}
+```
+
+`approvableType` mengikuti morph map host jika dikonfigurasi. submit mengembalikan
+void; `ExternalApprovalBridge::checkAndSubmitIfRequired()` mengembalikan true jika
+posting harus menunggu, false jika dapat diteruskan. NullApprovalBridge selalu
+false. Hasil `Inventory::post()` tetap Document, dengan proyeksi misalnya:
+
+```json
+{"id":1,"document_type":"purchase_receipt","status":"waiting_approval"}
+```
+
+Saat callback eksternal yang tervalidasi mengubah approval_status, observer Core
+menangani transisi/resume sesuai aturan bridge. Untuk jalur resume eksplisit setelah
+status Core sudah approved:
+
+```php
+$document = \ESolution\Inventory\Facades\Inventory::resumeApproved(1);
+$result = ['id' => $document->id, 'status' => $document->status->value];
+// Proyeksi: {"id":1,"status":"posted"}
+```
+
+`PostingEngine::resumeApproved`, `ResumeApprovedDocument::handle(1)`, dan
+`__invoke(1)` memakai proses yang sama. Jika sudah posted, hasil lama dikembalikan;
+jika belum approved, DomainException (`Only an approved document can resume posting.`).
+Jangan memaksa status approved dari request pengguna untuk melewati approval.
+Data stok/jurnal belum ditulis saat waiting; resume menggunakan payload tersimpan,
+bukan harga/qty baru dari callback. Auth callback, identity resolver, rejection map,
+dan workflow aktif harus dipenuhi seperti bagian prasyarat di atas.

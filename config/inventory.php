@@ -17,6 +17,8 @@ return [
         'enabled' => false,
         'connection' => null,
         'tenant_payload_key' => null,
+        // Verified host mapping keys for adjustment/count/return journal roles.
+        'document_mapping_keys' => [],
         'service_code_map' => [
             'purchase_receipt' => 'PURCHASE_CREDIT',
             'goods_issue' => ['SALES_CASH', 'SALES_CASH_VAT', 'SALES_CREDIT', 'SALES_CREDIT_VAT'],

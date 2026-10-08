@@ -25,16 +25,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - php: '8.1'
-            laravel: '9'
-            testbench: '^7.0'
-            pest: '^1.23.1'
-            larastan: '^2.11'
-          - php: '8.1'
-            laravel: '10'
-            testbench: '^8.0'
-            pest: '2.36.0'
-            larastan: '^2.11'
           - php: '8.2'
             laravel: '11'
             testbench: '^9.0'
@@ -67,60 +57,12 @@ jobs:
           "pestphp/pest:${{ matrix.pest }}"
           "larastan/larastan:${{ matrix.larastan }}"
 
-      # Compatibility coverage only: keep these findings visible in composer audit.
-      # Legacy audit.ignore is also supported by Composer's newer policy config.
-      - name: Allow known Laravel 9 advisories for compatibility testing
-        if: matrix.laravel == '9'
-        run: >-
-          composer config --json audit.ignore
-          '{
-            "PKSA-d5tc-s1qs-h781": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
-            "PKSA-m5cs-t1y6-qpcs": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
-            "PKSA-3r5d-mb8f-1qw9": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
-            "PKSA-mdq4-51ck-6kdq": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
-            "PKSA-8qx3-n5y5-vvnd": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."},
-            "PKSA-w7xr-vk7n-rstm": {"apply": "block", "reason": "Laravel 9 compatibility CI only; not a production exception."}
-          }'
-
       # Use the latest Laravel 11 patch line; do not exempt advisories fixed there.
       - name: Configure Laravel 11 legacy compatibility testing
         if: matrix.laravel == '11'
         run: |
           composer require --dev --no-update "laravel/framework:^11.57"
           composer config --json audit.ignore '{"PKSA-d5tc-s1qs-h781":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."},"PKSA-m5cs-t1y6-qpcs":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."},"PKSA-3r5d-mb8f-1qw9":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."},"PKSA-mdq4-51ck-6kdq":{"apply":"block","reason":"Laravel 11 compatibility CI only; not a production exception."}}'
-
-      - name: Select Laravel 9 compatible PHPUnit and configuration
-        if: matrix.laravel == '9'
-        run: |
-          composer require --dev --no-update "phpunit/phpunit:^9.6.34"
-          cp phpunit9.xml.dist phpunit.xml
-
-      # Laravel 10: Pest 2.36.0 supports PHP 8.1 but conflicts with PHPUnit >10.5.36.
-      # Pest 2.36.1 requires PHP 8.2. Keep this legacy exception in CI only.
-      - name: Configure Laravel 10 framework and PHPUnit compatibility
-        if: matrix.laravel == '10' && matrix.php == '8.1'
-        run: |
-          composer require --dev --no-update "laravel/framework:^10.50.3" "phpunit/phpunit:10.5.36"
-          # Composer does not support writing individual audit.ignore.<ID> keys.
-          # Merge into the existing map so Laravel advisory exceptions survive.
-          php <<'PHP'
-          <?php
-          $path = 'composer.json';
-          $manifest = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-          // Only advisories still affecting the selected Laravel 10 patch line.
-          // Older, fixed Laravel advisories are intentionally not exempted.
-          foreach (['PKSA-d5tc-s1qs-h781', 'PKSA-m5cs-t1y6-qpcs', 'PKSA-3r5d-mb8f-1qw9', 'PKSA-mdq4-51ck-6kdq'] as $id) {
-              $manifest['config']['audit']['ignore'][$id] = [
-                  'apply' => 'block',
-                  'reason' => 'Laravel 10 compatibility CI only; not a production exception.',
-              ];
-          }
-          $manifest['config']['audit']['ignore']['PKSA-z3gr-8qht-p93v'] = [
-              'apply' => 'block',
-              'reason' => 'Laravel 10 / PHP 8.1 compatibility CI requires Pest 2.36.0 and PHPUnit 10.5.36; not a production exception.',
-          ];
-          file_put_contents($path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
-          PHP
 
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
@@ -130,11 +72,11 @@ jobs:
 
       - name: Audit dependencies
         id: audit
-        continue-on-error: ${{ (matrix.php == '8.1' || matrix.laravel == '11') && !startsWith(github.ref, 'refs/tags/') }}
+        continue-on-error: ${{ matrix.laravel == '11' && !startsWith(github.ref, 'refs/tags/') }}
         run: composer audit --locked
 
       - name: Report legacy compatibility audit findings
-        if: (matrix.php == '8.1' || matrix.laravel == '11') && steps.audit.outcome == 'failure'
+        if: matrix.laravel == '11' && steps.audit.outcome == 'failure'
         run: echo "::warning::Legacy dependency audit failed. This job checks compatibility only; release-tag audits remain blocking."
 
       - name: Test
@@ -157,7 +99,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.2'
           coverage: none
           tools: composer:v2
       - run: composer update --prefer-dist --no-interaction --no-progress

@@ -28,7 +28,7 @@ external bridges, verification, and deployment.
    receipt/issue smoke, then `php artisan config:clear`. Module registration with cached configuration is tested; repeat this cycle
    with real host receipt/issue flows before deployment.
 
-### Installing optional packages from this monorepo
+### Activating bundled modules
 
 Modules are bundled in Core. To activate WMS after installation:
 
@@ -50,6 +50,9 @@ from a bundled release also contains the modules, without requiring Pages.
 See [installation](INSTALLATION.md) for sources, upgrade, cache handling, and
 maintainer release steps. Standalone module manifests remain internal catalog
 metadata; Core replaces their Composer names to prevent duplicate installations.
+
+For module purposes, features, examples, and host responsibilities, see the
+[nine-module guide](INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul).
 
 ## Package combinations and ownership
 
@@ -110,9 +113,15 @@ Scheduler/retry guarantees across hosts remain a release verification item.
 
 ## Uninstall and troubleshooting
 
-Stop host jobs and writes before disabling a package. Back up its tables and
-remove host service/provider references before removing the Composer dependency.
-Removing a dependency does not remove data. Preserve historical records by default.
+To disable a bundled module, stop its host jobs/writes, remove manual provider
+registrations and move its `config/inventory-<module>.php` file out of the host
+config directory. Clear/rebuild config cache and restart long-running workers.
+Do not remove a standalone Composer dependency: module code ships inside Core.
+Data and tables remain, and host code must stop calling the disabled module.
+See [module status and deactivation](INSTALLATION.md#9-status-modul-dan-penonaktifan).
+
+Before removing Core itself, back up its tables and remove host service/provider
+references. Removing the dependency does not remove data. Preserve historical records.
 Do not use a global `migrate:rollback` on a live host to uninstall one package:
 it can include other packages in the same batch. Test dependency-aware teardown
 only on a disposable clone with an explicit approved data-retention plan.
@@ -159,3 +168,79 @@ scope. Services are not a built-in authentication or multi-tenant security layer
 Attachment upload, MIME/size validation, storage access, malware scanning and URL
 authorization remain host responsibilities. Verify cross-organization denial,
 forged references and attachment access in the host before enabling these features.
+
+
+## Referensi service internal
+
+Untuk integrasi bisnis gunakan [Inventory facade](SALES_PURCHASING_INTEGRATION.md#panduan-input-dan-hasil-service)
+dan contoh service pada README tiap modul. Service di bawah adalah extension
+points atau implementasi internal, bukan endpoint CRUD. Semua contoh nilai adalah
+ilustrasi, mengikuti [konvensi hasil](SALES_PURCHASING_INTEGRATION.md#konvensi-contoh-dan-error).
+Namespace service Core: `ESolution\Inventory\Services`; kontrak Core: `ESolution\Inventory\Contracts`.
+
+| Service / method | Kegunaan dan contoh input | Hasil / efek / kegagalan |
+|---|---|---|
+| `ConfigurationDepthResolver::validate` | `validate(config('inventory'))` | list<string>, `[]` jika valid; contoh `["Default costing method is not supported."]`. Tidak menulis data. |
+| `costingScope` | `costingScope(1, 10)` | `['warehouse',1]` atau `['rack',10]` sesuai config; rack tanpa lokasi melempar DomainException. |
+| `PolicyEngine::register` | `register('posting', fn($data) => $data->organizationId === 1)` | void; mengganti rule dengan nama sama di container/proses saat ini. |
+| `evaluate` | `evaluate('posting', $data)`; argumen variadic | bool true/false; jika tanpa custom rule memakai konfigurasi enabled. Tidak memposting stok. |
+| `InMemoryDocumentTypeRegistry::register` | `register('sample_receipt', new DocumentTypeDefinition('in'))` | void; registrasi tipe di memori, tidak membuat dokumen. |
+| `get` | `get('sample_receipt')` | DocumentTypeDefinition dengan direction='in', costing=true, beforePosting=null pada contoh; tipe tidak terdaftar melempar DomainException. |
+| `has` / `all` | `has('sample_receipt')`, `all()` | true; map type=>DocumentTypeDefinition. |
+| `MovementPolicyManager::register` | `register('custom', MyMovementPolicy::class)` | void; class harus mengimplementasi MovementPolicy, selain itu InvalidArgumentException. |
+| `resolvedModel` | `resolvedModel($line)` | string, misalnya standard; precedence override lokasi, item, lalu config. |
+| `resolve` | `resolve($line)` | MovementPolicy atau null untuk standard; model custom tanpa registrasi ditolak. |
+| `MovementPolicy::name` | `$policy->name()` | string nama policy; implementasi modul/host. |
+| `MovementPolicy::validate` | `$policy->validate($line, 'out')` | void atau exception; tidak boleh dipakai untuk melewati PostingEngine. |
+| `OwnershipNeutralMovementPolicy` | Marker interface pada policy receipt | Menandai receipt tanpa perpindahan kepemilikan, bukan service dengan response. |
+| `WorkflowEngine::onTransition` | `onTransition('purchase_receipt', function ($document, $from, $to) {})` | void; menambah callback, registrasi ulang menambah callback lagi. |
+| `transition` | `transition($draft, DocumentStatus::SUBMITTED, ['type'=>'user','id'=>'1'])` | void; mengubah status, audit trail, dan memanggil hook. Transisi yang sama diulang tidak otomatis idempotent. |
+| `TrackingPolicy::validateLine` | Item, Batch atau null, 'out', LineData, tanggal Carbon | void atau DomainException untuk tracking/expiry/certificate tidak valid. Dipanggil engine. |
+| `prepareIssueLayers` | Builder CostLayer yang sudah dibatasi item/scope, Item, tanggal Carbon | Builder dengan filter batch eligible dan urutan FIFO/FEFO; query belum dieksekusi. |
+| `StockCardManager::refresh` | `refresh($postedLine)` | Model StockCard: running_qty/running_value/avg_cost; upsert ringkasan hari posting, bukan query read-only. |
+
+DocumentTypeRegistry dan MovementPolicyRegistry adalah kontrak untuk registry di
+atas. Register extension saat boot provider host; perubahan registrasi tidak
+persisten antar proses. Workflow transition ke posted tidak menjalankan ledger:
+aplikasi harus tetap memakai post/resumeApproved, bukan memanipulasi status langsung.
+
+### Contoh extension dan driver costing
+
+```php
+use ESolution\Inventory\Contracts\DocumentTypeRegistry;
+use ESolution\Inventory\Support\DocumentTypeDefinition;
+use ESolution\Inventory\Drivers\Costing\MovingAverageDriver;
+
+$registry = app(DocumentTypeRegistry::class);
+$registry->register('sample_receipt', new DocumentTypeDefinition('in'));
+$definition = $registry->get('sample_receipt');
+$known = $registry->has('sample_receipt'); // true
+
+$driver = new MovingAverageDriver();
+$receipt = $driver->receipt(10, 400000, 10, 50000);
+$result = get_object_vars($receipt);
+```
+
+DTO CostingResult dari receipt:
+
+```json
+{"quantity":20,"unitCost":45000,"amount":900000,"allocations":[]}
+```
+
+| CostingDriver API | Contoh input | Hasil |
+|---|---|---|
+| `method()` | Tanpa parameter | ValuationMethod enum: fifo / moving_average / weighted_average. |
+| `receipt(currentQuantity,currentValue,quantity,unitCost)` | `(10,400000,10,50000)` | CostingResult sesuai driver; hasil contoh di atas untuk Moving Average. |
+| `issue(layers,quantity)` MovingAverage | `[['qty'=>20.0,'unit_cost'=>45000.0]], 5` | CostingResult quantity=5, unitCost=45000, amount=225000, allocations=[]. Input adalah active average layer. |
+| `issue` FIFO | `[['id'=>1,'qty'=>10.0,'unit_cost'=>40000.0],['id'=>2,'qty'=>10.0,'unit_cost'=>50000.0]], 15` | quantity=15, amount=650000, unitCost=650000/15; allocations berisi layer_id/qty/unit_cost (10 dari 1, 5 dari 2). |
+| `issue` WeightedAverage | `[['qty'=>10.0,'unit_cost'=>40000.0],['qty'=>10.0,'unit_cost'=>50000.0]], 5` | quantity=5, amount=225000, unitCost=45000, allocations=[]. Driver tersedia; posting Weighted Average masih TODO. |
+
+Driver hanya menghitung, tidak menulis cost layer atau ledger. Qty tidak positif /
+ketersediaan tidak cukup dapat melempar exception. Jangan memanggil driver lalu
+menulis ledger sendiri. Core PostingEngine memilih alur biaya dan transaksi;
+facade `post/transfer/reverse/resumeApproved` mengembalikan Document, sedangkan
+`reserve/release/consume` mengembalikan Reservation. Delegasi service langsung
+tercantum pada [SOURCE_REFERENCE](SOURCE_REFERENCE.md), sementara payload dan hasil
+ada pada panduan Core. Kontrak bridge mempunyai contoh di
+[Accounting](ACCOUNTING_BRIDGE.md#contoh-payload-dan-hasil-gateway) dan
+[Approval](APPROVAL_BRIDGE.md#contoh-input-dan-hasil).

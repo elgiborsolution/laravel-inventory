@@ -17,12 +17,27 @@
 - Conservative read-only release preflight; CI rejects tagged builds with open checklist blockers.
 - Installation, ownership, operational and security-review guidance.
 
+## Purchase, sale, and stock-count calculations
+
+- Moving Average now values actual posting from scoped ledger quantity/value;
+  FIFO remains the default and its existing behavior is retained.
+- Optional LineData transaction pricing/discounts and `Inventory::stockCard()`
+  expose per-line balances, COGS, profit, and running sales without new tables.
+- Untracked base-UOM stock counts post only their variance, including zero physical
+  counts, retry, and approval resume. Tracked counts and count-session freeze remain
+  outside this implementation.
+- Adjustment and supplier-return journals require explicit verified host mapping
+  roles. Supplier refunds use invoice price and recognize the book-value difference.
+- Negative Moving Average stock and non-FIFO standard transfer/reversal remain
+  unsupported. Historical FIFO postings are not recalculated.
+- See [business calculations](SALES_PURCHASING_INTEGRATION.md#business-calculations)
+  for setup, compatibility, host responsibilities, and reporting order.
+
 ## Known release blockers
 
 The authoritative register is [IMPLEMENTATION_TODO](../IMPLEMENTATION_TODO.md).
 Phase 14 is not complete and RELEASE-GATE remains open. Existing Core TODO tests
-include after-commit events, broader real database races, constraints and stock-count
-variance orchestration. Passing implemented tests does not close TODOs.
+include broader real database races, constraints, and Weighted Average posting. Passing implemented tests does not close TODOs.
 
 External Accounting service coverage for Manufacturing, Food and Automotive,
 Approval rejection decisions, real bridge combinations, database/version matrices,

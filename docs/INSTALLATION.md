@@ -27,8 +27,8 @@ Keberadaan tag GitHub tidak menutup blocker yang masih didokumentasikan.
 1. Sediakan aplikasi Laravel, PHP CLI, Composer, dan database development/staging.
 2. Periksa `php -v`, `composer --version`, dan `php artisan --version`.
 3. Cocokkan versi dengan [matriks kompatibilitas](architecture/SUPPORTED_VERSIONS.md).
-   Core mendeklarasikan PHP `^8.1` dan Illuminate 9–13; persyaratan PHP Laravel
-   yang dipakai tetap berlaku. Laravel 9 dapat diblokir advisory keamanan.
+   Core dan sembilan modul mensyaratkan PHP `>=8.2` dan Illuminate 11?13; persyaratan PHP Laravel
+   yang dipakai tetap berlaku. Laravel 10 ke bawah dan Laravel 14 ke atas tidak didukung.
    Pengecualian pada CI package bukan konfigurasi instalasi produksi.
 4. Atur koneksi database pada `.env` host, kemudian jalankan `php artisan config:clear`.
 5. Untuk aplikasi aktif, siapkan backup database, branch perubahan, dan staging.
@@ -70,17 +70,19 @@ php artisan inventory:modules
 Daftarkan hanya root checkout, bukan `packages/*`, pada manifest host:
 
 ```json
-"repositories": [
-    {
-        "type": "path",
-        "url": "D:/Project/inventori-package",
-        "options": {
-            "versions": {
-                "elgibor-solution/laravel-inventory": "2.0.x-dev"
+{
+    "repositories": [
+        {
+            "type": "path",
+            "url": "D:/Project/inventori-package",
+            "options": {
+                "versions": {
+                    "elgibor-solution/laravel-inventory": "2.0.x-dev"
+                }
             }
         }
-    }
-]
+    ]
+}
 ```
 
 ```bash
@@ -109,11 +111,11 @@ sehingga migration yang sudah tercatat tidak diulang. Uji perpindahan pada stagi
 ## 4. Konfigurasi dan migration untuk instalasi baru
 
 Provider mendukung Laravel auto-discovery. Jika host menonaktifkannya melalui
-`extra.laravel.dont-discover`, daftarkan provider secara manual pada tempat
-registrasi provider versi Laravel host; daftarkan Core sebelum modul.
-Nama provider tercantum di `extra.laravel.providers` pada manifest masing-masing.
+`extra.laravel.dont-discover`, daftarkan `ESolution\Inventory\InventoryServiceProvider` secara manual pada
+tempat registrasi provider versi Laravel host. Core kemudian mendaftarkan provider
+modul berdasarkan file konfigurasi host; tidak perlu registrasi manual per modul.
 
-Publish Core terlebih dahulu. Untuk mengaktifkan WMS, cukup jalankan tiga
+Publish Core terlebih dahulu. Untuk mengaktifkan WMS, jalankan
 perintah berikut; proses `migrate` berikutnya memuat provider WMS:
 
 ```bash
@@ -149,6 +151,11 @@ Pada `config/inventory.php`, tentukan struktur organisasi, storage, costing,
 kebijakan stok negatif, dan idempotency sebelum membuat transaksi. Validator
 saat ini mewajibkan level organisasi warehouse serta storage warehouse dan rack.
 Scope costing dapat `warehouse` atau `rack`; scope rack memerlukan location ID.
+Untuk mengikuti perhitungan rata-rata bergerak, pilih
+`inventory.costing.default_method = moving_average` atau `inv_items.costing_method`
+per item. Default package tetap FIFO untuk kompatibilitas. Jangan mengganti metode
+pada stok aktif tanpa rekonsiliasi nilai dan pengujian; histori tidak dihitung ulang.
+Moving Average menolak stok kurang meskipun kebijakan FIFO mengizinkan stok negatif.
 Mulai dengan Accounting nonaktif. Approval bergantung pada keberadaan package
 eksternal, bukan sebuah switch `approval.enabled` pada Inventory.
 
@@ -168,6 +175,11 @@ salinannya sebagai migration baru.
 
 ## 5. Master data dan pengaktifan fitur
 
+Setelah instalasi, gunakan [panduan input dan hasil service](SALES_PURCHASING_INTEGRATION.md#panduan-input-dan-hasil-service)
+untuk parameter wajib/opsional, contoh DTO/payload, proyeksi hasil, dampak transaksi,
+serta aturan error/retry. Contoh service tiap modul tersedia pada README yang
+ditautkan di tabel berikut.
+
 Setelah migration, buat master melalui seeder/service host: organisasi dan gudang,
 kategori barang, satuan dasar, barang, serta lokasi penyimpanan sesuai kebutuhan.
 Gunakan ID master `inv_*` pada DTO Core. ID produk/gudang aplikasi lama tidak
@@ -179,7 +191,7 @@ service modul yang memanggil Core. Jangan mengisi ledger, cost layer, atau saldo
 secara langsung. Contoh penerimaan tersedia pada [README](../README.md#posting-example);
 reservasi dan fulfillment ada di [integrasi Sales/Purchasing](SALES_PURCHASING_INTEGRATION.md).
 
-| Modul (suffix Composer) | Langkah setelah instalasi | Dokumentasi |
+| Modul (kode aktivasi) | Langkah setelah instalasi | Dokumentasi |
 |---|---|---|
 | Core | Hubungkan penerimaan, pengeluaran, reservasi, availability, dan kartu stok ke service host. | [API dan schema](SOURCE_REFERENCE.md) |
 | Retail (`retail`) | Buat product family/varian; aktifkan `inventory-retail.consignment.enabled` jika diperlukan, lalu atur terms supplier. POS/e-commerce memakai posting/reservasi Core. | [Retail](../packages/retail/README.md) |
@@ -207,6 +219,122 @@ Scheduler dikonfigurasi oleh host sesuai kebutuhan operasional:
   job/command host, bukan nama command Artisan yang belum disediakan.
 
 Tentukan frekuensi, akses tenant, retry, dan pencegahan overlap pada host.
+
+### 5.1. Kegunaan, fungsi, dan fitur sembilan modul
+
+Semua modul berikut sudah termasuk dalam bundle Core. Pilih berdasarkan proses
+bisnis yang diperlukan, lalu aktifkan dengan publish konfigurasi seperti bagian 4.
+Core tetap menangani stok, ledger, costing, dan reservasi; modul menambahkan
+proses khusus tanpa menjadi aplikasi bisnis lengkap. Contoh berikut menggambarkan
+penggunaan setelah host menghubungkan master data, service, dan UI/API.
+
+#### Retail
+
+**Kegunaan:** Toko dengan varian produk dan barang titipan supplier (konsinyasi).
+
+**Fungsi dan fitur:** Membentuk kombinasi ukuran/warna sebagai Core Item terpisah; mengatur terms konsinyasi per barang/lokasi; mencatat kewajiban settlement dari barang terjual. POS memakai posting Core, sedangkan e-commerce dapat memakai reservasi sebelum fulfillment.
+
+**Contoh penggunaan:** Toko pakaian membuat SKU untuk setiap ukuran dan warna, lalu melacak penjualan barang titipan.
+
+**Batas dan integrasi host:** Harga, diskon, kasir, storefront, pembayaran supplier, dan jurnal settlement tetap ditangani aplikasi host.
+
+Dokumentasi teknis: [Retail](../packages/retail/README.md).
+
+#### WMS
+
+**Kegunaan:** Gudang yang membutuhkan pengaturan pekerjaan penyimpanan dan pengambilan barang.
+
+**Fungsi dan fitur:** Strategi put-away (penempatan), picking FIFO/FEFO, task, wave (kelompok tugas picking), LPN (identitas container), cross-docking, dan pekerjaan replenishment (pengisian ulang lokasi).
+
+**Contoh penggunaan:** Barang diterima, petugas memperoleh tugas penempatan, kemudian mengambil barang berdasarkan wave untuk pengiriman.
+
+**Batas dan integrasi host:** Saran lokasi dan pekerjaan replenishment tidak otomatis mengubah saldo. Host menghubungkan penyelesaian pekerjaan dengan posting/transfer Core; integrasi transportasi juga milik host.
+
+Dokumentasi teknis: [WMS](../packages/wms/README.md).
+
+#### Manufacturing
+
+**Kegunaan:** Produksi atau perakitan barang berdasarkan BOM (daftar kebutuhan bahan).
+
+**Fungsi dan fitur:** BOM berversi yang tidak dapat diubah setelah aktivasi; Production Order; konsumsi bahan dan penerimaan hasil dalam satu transaksi; biaya aktual bahan; scrap, selisih pemakaian/hasil, dan produksi bertahap melalui WIP.
+
+**Contoh penggunaan:** Merakit produk dari beberapa komponen, lalu menghitung biaya hasil berdasarkan biaya komponen yang benar-benar dikeluarkan.
+
+**Batas dan integrasi host:** Referensi pesanan bisnis berasal dari host. Penyelesaian produksi saat ini mensyaratkan accounting Core/modul nonaktif dan NullAccountingBridge.
+
+Dokumentasi teknis: [Manufacturing](../packages/manufacturing/README.md).
+
+#### Healthcare
+
+**Kegunaan:** Persediaan farmasi atau bahan medis yang memerlukan pengawasan batch dan kedaluwarsa.
+
+**Fungsi dan fitur:** Preset batch/expiry, FEFO (kedaluwarsa terdekat dikeluarkan dahulu), COA (sertifikat analisis) saat pengeluaran, penerimaan kedaluwarsa dengan disposisi terkontrol, recall, dan penelusuran dokumen pengeluaran batch.
+
+**Contoh penggunaan:** Menarik batch obat tertentu dan menelusuri dokumen yang pernah mengeluarkan batch tersebut.
+
+**Batas dan integrasi host:** FEFO dimiliki Core dan tidak membutuhkan WMS. Preset harus diterapkan pada item terkait; modul tidak menyediakan aplikasi klinik atau rekam medis.
+
+Dokumentasi teknis: [Healthcare](../packages/healthcare/README.md).
+
+#### Food
+
+**Kegunaan:** Produksi makanan berdasarkan resep untuk stok atau pesanan.
+
+**Fungsi dan fitur:** Recipe berversi, RecipeBatch dengan konsumsi bahan/penerimaan hasil atomik, biaya aktual bahan, produksi MTS (untuk stok) dan MTO (sesuai pesanan), serta preset batch dan persyaratan sertifikat halal.
+
+**Contoh penggunaan:** Memproduksi satu batch makanan dari resep dan membukukan biaya bahan ke hasil produksi.
+
+**Batas dan integrasi host:** FEFO dapat diatur melalui Core tanpa Healthcare/WMS. Penyelesaian RecipeBatch saat ini memerlukan accounting Core/Food nonaktif; integrasi pesanan dan UI tetap milik host.
+
+Dokumentasi teknis: [Food](../packages/food/README.md).
+
+#### Asset
+
+**Kegunaan:** Peminjaman aset perusahaan yang perlu dilacak per serial.
+
+**Fungsi dan fitur:** Checkout/check-in, reservasi aset, pencegahan alokasi aktif ganda, tanggal jatuh tempo, dan notifier keterlambatan yang dapat diganti.
+
+**Contoh penggunaan:** Meminjamkan laptop atau alat kerja kepada pegawai lalu mencatat pengembaliannya.
+
+**Batas dan integrasi host:** Checkout/check-in tidak mengubah stok on-hand. Status peminjaman mengikuti data checkout/alokasi, bukan status serial on_loan. Host mengatur penerima, UI, dan jadwal notifikasi; jangan alokasikan serial yang sama melalui Asset dan Library.
+
+Dokumentasi teknis: [Asset](../packages/asset/README.md).
+
+#### Project
+
+**Kegunaan:** Penyediaan dan pengambilan material untuk proyek atau site.
+
+**Fungsi dan fitur:** Alokasi berbasis reservasi, penambahan alokasi, pemindahan alokasi secara atomik, pengambilan material sebagian, serta laporan alokasi dan konsumsi.
+
+**Contoh penggunaan:** Mereservasi material untuk proyek konstruksi lalu mengeluarkannya bertahap sesuai kebutuhan lapangan.
+
+**Batas dan integrasi host:** Identitas proyek berasal dari host. Pemindahan alokasi reservasi bukan perpindahan fisik barang; perubahan stok tetap melalui Core. Modul tidak menyediakan manajemen jadwal atau anggaran proyek.
+
+Dokumentasi teknis: [Project](../packages/project/README.md).
+
+#### Automotive
+
+**Kegunaan:** Pencatatan pemakaian sparepart untuk work order dan kendaraan.
+
+**Fungsi dan fitur:** WorkOrderParts::issue untuk pengeluaran sparepart melalui Core, laporan pemakaian per work order/kendaraan/barang/serial, serta preset serial dan sertifikat compliance.
+
+**Contoh penggunaan:** Mengeluarkan sparepart untuk servis kendaraan dan melaporkan kuantitas serta biaya pemakaiannya.
+
+**Batas dan integrasi host:** Master kendaraan dan work order dimiliki host; tidak ada migration tambahan. Pengeluaran Automotive ditolak ketika accounting terkait aktif atau bridge bukan NullAccountingBridge karena service code belum terverifikasi.
+
+Dokumentasi teknis: [Automotive](../packages/automotive/README.md).
+
+#### Library
+
+**Kegunaan:** Sirkulasi peminjaman buku atau koleksi per eksemplar.
+
+**Fungsi dan fitur:** Satu serial per copy, antrean hold, reservasi copy yang siap diambil, checkout/check-in, perpanjangan, kedaluwarsa ready hold, status terlambat, dan pencatatan denda.
+
+**Contoh penggunaan:** Anggota memesan buku, mengambil copy yang tersedia, lalu mengembalikan atau memperpanjang pinjaman.
+
+**Batas dan integrasi host:** Anggota berasal dari host. Sirkulasi tidak mengubah on-hand; tarif denda otomatis, pembayaran, dan jurnal tidak disediakan. Host menjadwalkan expireReadyHolds(); jangan alokasikan serial yang sama melalui Asset dan Library.
+
+Dokumentasi teknis: [Library](../packages/library/README.md).
 
 ## 6. Project lama: integrasi dan perpindahan data
 
@@ -242,10 +370,14 @@ importer data lama atau migration upgrade dari schema Inventory generasi sebelum
 8. Rekonsiliasi per barang/gudang/lokasi dan tracking: kuantitas, nilai, reservasi,
    serta saldo tersedia. Buka kembali transaksi setelah hasilnya sesuai.
 
-Stock opname memerlukan perhatian khusus: tipe `stock_opname`/`stock_count`
-terdaftar tanpa pergerakan stok. Posting dokumen tersebut belum otomatis
-menghitung dan membukukan selisih. Host perlu menghubungkan selisih yang disetujui
-ke adjustment yang sesuai; lihat blocker pada [release notes](RELEASE_NOTES.md).
+Stock opname untuk barang stock tanpa tracking kini memakai `qty` sebagai hasil
+hitung fisik (boleh nol), bukan kuantitas adjustment. Saat posting/resume approval,
+Core mengunci item, menghitung fisik dikurangi saldo sistem saat itu, lalu memposting
+hanya selisih. Jangan memposting adjustment tambahan untuk selisih yang sama.
+Host harus menjaga hasil hitung tetap valid selama menunggu approval (misalnya
+menghentikan transaksi pada lokasi yang dihitung); package belum menyediakan freeze
+sesi opname. Baca [perhitungan bisnis](SALES_PURCHASING_INTEGRATION.md#business-calculations)
+untuk unitCost, pricing, kartu stok, dan batas dukungan.
 
 Siapkan rollback operasional di staging. Menghapus dependency Composer tidak
 mengembalikan data hasil import. Jangan memakai rollback migration global untuk
@@ -380,7 +512,7 @@ publish agar nilai konfigurasi modul baru tersedia pada proses berikutnya.
 | Katalog online 404 | Aktifkan deployment atau hapus entri katalog dan gunakan rilis Packagist yang tersedia. |
 | Modul tetap tidak aktif | Periksa file config pada host, cache, registrasi manual, dan proses worker lama. |
 | Migration pending | Jalankan `migrate` setelah publish, dengan meninjau migration lain yang pending. |
-| Composer menolak Laravel 9 karena advisory | Evaluasi upgrade host; pengecualian CI bukan perbaikan kerentanan. |
+| Composer menolak versi Laravel host | Gunakan Laravel 11, 12, atau 13 dengan versi PHP yang sesuai. |
 | Accounting menolak operasi modul | Periksa batasan Manufacturing/Food/Automotive di bagian 7. |
 
 ## 10. Maintainer: rilis bundle dari satu repo

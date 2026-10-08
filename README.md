@@ -10,6 +10,9 @@ a General Ledger and does not own journal tables.
 
 ## Installation
 
+Requires **Laravel 11, 12, or 13** and PHP **8.2 or later** for Core and all nine modules. The selected Laravel
+version and other dependencies may require a newer PHP version.
+
 Core now bundles all nine modules with runtime autoload. Install Core once;
 activate a module by publishing its configuration, then migrate on the next
 Artisan invocation. No module Composer require or activation boolean is needed.
@@ -23,8 +26,10 @@ php artisan inventory:modules
 ```
 
 Panduan Bahasa Indonesia: [instalasi project baru dan project lama](docs/INSTALLATION.md),
-termasuk pemasangan seluruh sembilan modul, konfigurasi, migrasi data lama,
+termasuk aktivasi modul, konfigurasi, migrasi data lama,
 integrasi Accounting/Approval, verifikasi, dan deployment.
+Lihat [kegunaan, fungsi, dan fitur sembilan modul](docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk contoh penggunaan dan batas tanggung jawab aplikasi host.
 
 ```bash
 composer require elgibor-solution/laravel-inventory
@@ -45,12 +50,19 @@ manifest replaces the old standalone module package names to avoid duplicate
 classes. See the [upgrade guide](docs/INSTALLATION.md) before switching an existing
 installation with separately installed modules.
 
+## Service usage reference
+
+Panduan [input, hasil service, error, dan retry](docs/SALES_PURCHASING_INTEGRATION.md#panduan-input-dan-hasil-service)
+memuat contoh Core dan navigasi ke service kesembilan modul. JSON model adalah
+proyeksi contoh, bukan kontrak endpoint HTTP bawaan. Untuk extension points lihat
+[service internal](docs/ECOSYSTEM_RELEASE.md#referensi-service-internal).
+
 ## Configuration
 
 The published `config/inventory.php` controls organization/storage depth,
 costing scope, negative-stock policy, idempotency, optional bridges, and
-after-commit behavior. Republish with `--force` when intentionally replacing an
-older published config, after backing up project-specific values.
+after-commit behavior. When upgrading, compare and merge configuration changes
+manually to preserve project-specific values; do not force-overwrite host config.
 
 Accounting is off by default:
 

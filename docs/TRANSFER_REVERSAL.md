@@ -89,3 +89,57 @@ php vendor/bin/pest tests/Feature/TransferReversalTest.php tests/Feature/Transfe
 Never select an application database. Concurrency tests launch independent PHP
 processes to verify competing transfers, identical retries and double reversal.
 Without the dedicated database configuration, concurrency tests are skipped.
+
+
+## Input dan hasil service
+
+Ikuti [konvensi hasil](SALES_PURCHASING_INTEGRATION.md#konvensi-contoh-dan-error).
+API facade menggunakan `TransferReversalService` secara internal. Persyaratan FIFO,
+warehouse scope, base UOM, tracking/bridge nonaktif pada Supported scope tetap berlaku.
+
+| DTO / parameter | Tipe / default | Fungsi |
+|---|---|---|
+| TransferData.organizationId | int, wajib | Organisasi pemilik dokumen. |
+| targetWarehouseId | int, wajib | Gudang tujuan aktif, berbeda dari setiap gudang sumber. |
+| trxDate | string, wajib | Tanggal valid YYYY-MM-DD. |
+| externalId | string, wajib | Kunci retry nonkosong, maksimal 128 byte. |
+| lines | list<LineData>, wajib | Item/gudang sumber, qty positif maksimal 6 desimal, UOM dasar; tanpa bonus/lokasi/tracking/meta/harga override. |
+| sourceType / sourceId | string='inventory' / ?string=null | Referensi host. |
+| ReversalRequest.documentId | int, wajib | ID dokumen asal posted yang didukung. |
+| reason | string, wajib | Alasan nonkosong. |
+| externalId | ?string=null | Default reversal:{documentId}. |
+
+Payload aplikasi transfer sebelum konversi menjadi TransferData:
+
+```json
+{"organizationId":1,"targetWarehouseId":2,"trxDate":"2026-10-08","externalId":"TR-001","lines":[{"itemId":1,"uomId":1,"warehouseId":1,"qty":3}]}
+```
+
+Gunakan pemanggilan pada awal dokumen ini. Untuk menampilkan hasil:
+
+```php
+$result = ['id' => $transfer->id, 'document_type' => $transfer->document_type,
+    'status' => $transfer->status->value,
+    'lines' => $transfer->lines->map(fn($line) => [
+        'warehouse_id' => (int) $line->warehouse_id, 'qty' => (float) $line->qty,
+    ])->all()];
+```
+
+Proyeksi transfer satu item menghasilkan dua line (sumber lalu tujuan):
+
+```json
+{"id":2,"document_type":"warehouse_transfer","status":"posted","lines":[{"warehouse_id":1,"qty":3},{"warehouse_id":2,"qty":3}]}
+```
+
+Proyeksi reversal setelah `Inventory::reverse(new ReversalRequest(2, 'Batal'))`:
+
+```json
+{"id":3,"document_type":"reversal","status":"posted","reversal_of_id":2,"reversal_reason":"Batal"}
+```
+
+Kedua hasil asli adalah Document dengan lines. Arah mutasi tersedia pada ledger;
+qty line tidak dibuat negatif. Reversal juga mengubah dokumen asal menjadi reversed.
+Contoh error: `Insufficient available stock for transfer or reversal.` atau
+`Original stock has been consumed or adjusted; reverse dependent movements first.`
+Semua kaki transfer/reversal rollback bersama. Retry dan batas pembatalan mengikuti
+Corrections and retries, bukan mengirim transaksi baru setiap terjadi timeout.
