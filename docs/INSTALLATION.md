@@ -27,8 +27,8 @@ Keberadaan tag GitHub tidak menutup blocker yang masih didokumentasikan.
 1. Sediakan aplikasi Laravel, PHP CLI, Composer, dan database development/staging.
 2. Periksa `php -v`, `composer --version`, dan `php artisan --version`.
 3. Cocokkan versi dengan [matriks kompatibilitas](architecture/SUPPORTED_VERSIONS.md).
-   Core dan sembilan modul mensyaratkan PHP `>=8.2` dan Illuminate 9–13; persyaratan PHP Laravel
-   yang dipakai tetap berlaku. Laravel 9 dapat diblokir advisory keamanan.
+   Core dan sembilan modul mensyaratkan PHP `>=8.2` dan Illuminate 11?13; persyaratan PHP Laravel
+   yang dipakai tetap berlaku. Laravel 10 ke bawah dan Laravel 14 ke atas tidak didukung.
    Pengecualian pada CI package bukan konfigurasi instalasi produksi.
 4. Atur koneksi database pada `.env` host, kemudian jalankan `php artisan config:clear`.
 5. Untuk aplikasi aktif, siapkan backup database, branch perubahan, dan staging.
@@ -512,7 +512,7 @@ publish agar nilai konfigurasi modul baru tersedia pada proses berikutnya.
 | Katalog online 404 | Aktifkan deployment atau hapus entri katalog dan gunakan rilis Packagist yang tersedia. |
 | Modul tetap tidak aktif | Periksa file config pada host, cache, registrasi manual, dan proses worker lama. |
 | Migration pending | Jalankan `migrate` setelah publish, dengan meninjau migration lain yang pending. |
-| Composer menolak Laravel 9 karena advisory | Evaluasi upgrade host; pengecualian CI bukan perbaikan kerentanan. |
+| Composer menolak versi Laravel host | Gunakan Laravel 11, 12, atau 13 dengan versi PHP yang sesuai. |
 | Accounting menolak operasi modul | Periksa batasan Manufacturing/Food/Automotive di bagian 7. |
 
 ## 10. Maintainer: rilis bundle dari satu repo

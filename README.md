@@ -10,7 +10,7 @@ a General Ledger and does not own journal tables.
 
 ## Installation
 
-Requires PHP **8.2 or later** for Core and all nine modules. The selected Laravel
+Requires **Laravel 11, 12, or 13** and PHP **8.2 or later** for Core and all nine modules. The selected Laravel
 version and other dependencies may require a newer PHP version.
 
 Core now bundles all nine modules with runtime autoload. Install Core once;
