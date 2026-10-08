@@ -9,6 +9,10 @@ final class ServiceCodeResolver
     public function resolve(string $documentType, ?string $callerSelection = null): ?string
     {
         $map = (array) config('inventory.accounting.service_code_map', []);
+        $aliases = ['purchase' => 'purchase_receipt', 'sale' => 'sales_delivery', 'purchase_return' => 'supplier_return', 'sales_return' => 'customer_return'];
+        if (! array_key_exists($documentType, $map) && isset($aliases[$documentType])) {
+            $documentType = $aliases[$documentType];
+        }
         if (! array_key_exists($documentType, $map)) {
             throw new AccountingMappingIncompleteException(
                 "Accounting service_code mapping is missing for document type '{$documentType}'.",

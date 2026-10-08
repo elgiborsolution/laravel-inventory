@@ -8,6 +8,7 @@ use ESolution\Inventory\Contracts\ApprovalBridge;
 use ESolution\Inventory\Contracts\DocumentTypeRegistry;
 use ESolution\Inventory\Contracts\MovementPolicyRegistry;
 use ESolution\Inventory\Contracts\OwnershipNeutralMovementPolicy;
+use ESolution\Inventory\Drivers\Costing\MovingAverageDriver;
 use ESolution\Inventory\DTO\AccountingPostingData;
 use ESolution\Inventory\DTO\ApprovalContext;
 use ESolution\Inventory\DTO\DocumentData;
@@ -98,6 +99,23 @@ final class PostingEngine
                 'meta' => $meta,
             ]);
 
+            if (in_array($data->type, ['stock_count', 'stock_opname'], true)) {
+                $keys = [];
+                foreach ($data->lines as $input) {
+                    $key = $input->itemId . ':' . $input->warehouseId . ':' . ($input->storageLocationId ?? 'all');
+                    if (isset($keys[$key])) {
+                        throw new \DomainException('Stock count has duplicate item/location lines.');
+                    }
+                    $keys[$key] = true;
+                    foreach ($data->lines as $other) {
+                        if ($other !== $input && $other->itemId === $input->itemId && $other->warehouseId === $input->warehouseId
+                            && $other->storageLocationId !== $input->storageLocationId
+                            && ($other->storageLocationId === null || $input->storageLocationId === null)) {
+                            throw new \DomainException('Stock count cannot mix warehouse totals and rack counts for one item.');
+                        }
+                    }
+                }
+            }
             foreach ($data->lines as $index => $lineData) {
                 $this->createAndValidateLine($document, $lineData, $index + 1, $definition->direction);
             }
@@ -195,17 +213,24 @@ final class PostingEngine
         $hasOwnedReceipt = false;
         foreach (DocumentLine::query()->where('document_id', $document->getKey())->orderBy('line_no')->get() as $line) {
             $movementPolicy = $this->movementPolicies->resolve($line);
-            $movementPolicy?->validate($line, $direction);
-            if (Item::query()->findOrFail($line->item_id)->item_type !== 'stock' || $direction === 'none') {
+            $lineDirection = $direction;
+            if (in_array($document->document_type, ['stock_count', 'stock_opname'], true)) {
+                if ($movementPolicy !== null) {
+                    throw new \DomainException('Stock count does not support custom movement policies.');
+                }
+                $lineDirection = $this->prepareStockCount($line);
+            }
+            $movementPolicy?->validate($line, $lineDirection);
+            if (Item::query()->findOrFail($line->item_id)->item_type !== 'stock' || $lineDirection === 'none') {
                 continue;
             }
-            if ($direction === 'in') {
+            if ($lineDirection === 'in') {
                 $movementPolicy instanceof OwnershipNeutralMovementPolicy
                     ? $hasOwnershipNeutralReceipt = true
                     : $hasOwnedReceipt = true;
             }
 
-            $direction === 'in'
+            $lineDirection === 'in'
                 ? $this->receive($line, $costing)
                 : $this->issue($line, $costing);
 
@@ -251,7 +276,9 @@ final class PostingEngine
         int $lineNo,
         string $direction,
     ): DocumentLine {
-        if ($data->qty <= 0 || $data->qtyBonus < 0) {
+        $isCount = in_array($document->document_type, ['stock_count', 'stock_opname'], true);
+        if (! is_finite($data->qty) || ! is_finite($data->qtyBonus)
+            || ($isCount ? $data->qty < 0 : $data->qty <= 0) || $data->qtyBonus < 0) {
             throw new \DomainException("Line {$lineNo}: quantity must be positive and bonus cannot be negative.");
         }
 
@@ -260,7 +287,37 @@ final class PostingEngine
             throw new \DomainException("Line {$lineNo}: item is inactive.");
         }
 
-        if ($direction === 'in' && $item->item_type === 'stock' && ($data->unitCost === null || $data->unitCost < 0)) {
+        if ($isCount && ($item->item_type !== 'stock' || ! empty($item->tracking)
+            || $data->batchId !== null || $data->serialId !== null || $data->qtyBonus !== 0.0
+            || (int) $item->base_uom_id !== $data->uomId || $data->transactionPrice !== null)) {
+            throw new \DomainException('Stock count requires untracked stock in base UOM without bonus or transaction pricing.');
+        }
+        $meta = $data->meta;
+        if (isset($meta['_inventory_pricing']) || isset($meta['_stock_count'])) {
+            throw new \DomainException('Reserved inventory metadata cannot be supplied by callers.');
+        }
+        $unitCost = $data->unitCost;
+        if (! is_finite($data->discountPerUnit) || $data->discountPerUnit < 0
+            || ($data->transactionPrice === null && $data->discountPerUnit !== 0.0)) {
+            throw new \DomainException('Discount requires a transaction price and must be non-negative.');
+        }
+        if ($data->transactionPrice !== null) {
+            if (! is_finite($data->transactionPrice) || $data->transactionPrice < $data->discountPerUnit) {
+                throw new \DomainException('Transaction price must be finite and cover the discount.');
+            }
+            $net = round($data->transactionPrice - $data->discountPerUnit, 6);
+            if (in_array($document->document_type, ['purchase', 'purchase_receipt'], true)) {
+                if ($unitCost !== null && abs($unitCost - $net) > 0.000001) {
+                    throw new \DomainException('Purchase unit cost must equal price less discount.');
+                }
+                $unitCost = $net;
+            }
+            $meta['_inventory_pricing'] = ['price' => $data->transactionPrice, 'discount' => $data->discountPerUnit, 'net' => $net];
+        }
+        if ($unitCost !== null && (! is_finite($unitCost) || $unitCost < 0)) {
+            throw new \DomainException('Unit cost must be finite and non-negative.');
+        }
+        if ($direction === 'in' && $item->item_type === 'stock' && ($unitCost === null || $unitCost < 0)) {
             throw new \DomainException("Line {$lineNo}: inbound stock requires a non-negative unit cost.");
         }
 
@@ -293,10 +350,10 @@ final class PostingEngine
             'storage_location_id' => $data->storageLocationId,
             'qty' => $data->qty,
             'qty_bonus' => $data->qtyBonus,
-            'unit_cost' => $data->unitCost,
+            'unit_cost' => $unitCost,
             'batch_id' => $data->batchId,
             'serial_id' => $data->serialId,
-            'meta' => $data->meta,
+            'meta' => $meta,
         ]);
         $line->document()->associate($document);
         $line->save();
@@ -351,6 +408,55 @@ final class PostingEngine
         }
     }
 
+    private function usesMovingAverage(DocumentLine $line): bool
+    {
+        $item = Item::query()->findOrFail($line->item_id);
+
+        return ($item->costing_method ?? config('inventory.costing.default_method')) === 'moving_average';
+    }
+
+    /** @return array{float, float} */
+    private function balance(DocumentLine $line, bool $physical = false): array
+    {
+        [$scope, $id] = $this->depth->costingScope((int) $line->warehouse_id, $line->storage_location_id === null ? null : (int) $line->storage_location_id);
+        $query = StockLedger::query()->where('item_id', $line->item_id)->where('warehouse_id', $line->warehouse_id);
+        if ($scope === 'rack' || ($physical && $line->storage_location_id !== null)) {
+            $query->where('storage_location_id', $line->storage_location_id);
+        }
+        $quantity = 0.0;
+        $value = 0.0;
+        foreach ($query->get() as $entry) {
+            $sign = $entry->direction === 'in' ? 1 : -1;
+            $quantity += $sign * (float) $entry->qty;
+            $value += $sign * (float) $entry->amount;
+        }
+        $value -= (float) CostAdjustment::query()->where('item_id', $line->item_id)
+            ->where('scope_type', $scope)->where('scope_id', $id)->sum('amount_delta');
+
+        return [round($quantity, 6), round($value, 6)];
+    }
+
+    private function prepareStockCount(DocumentLine $line): string
+    {
+        [$systemQty] = $this->balance($line, true);
+        $counted = (float) $line->qty;
+        $difference = round($counted - $systemQty, 6);
+        $meta = $line->meta ?? [];
+        $meta['_stock_count'] = ['counted_qty' => $counted, 'system_qty' => $systemQty, 'difference' => $difference];
+        $line->meta = $meta;
+        $line->qty = abs($difference);
+        if ($difference > 0 && $line->unit_cost === null) {
+            [$qty, $value] = $this->balance($line);
+            if ($qty <= 0) {
+                throw new \DomainException('Stock count gain without an existing balance requires unitCost.');
+            }
+            $line->unit_cost = $value / $qty;
+        }
+        $line->save();
+
+        return $difference > 0 ? 'in' : ($difference < 0 ? 'out' : 'none');
+    }
+
     private function receive(DocumentLine $line, bool $costing): void
     {
         [$scopeType, $scopeId] = $this->depth->costingScope(
@@ -361,6 +467,14 @@ final class PostingEngine
         $purchaseAmount = (float) $line->qty * (float) $line->unit_cost;
         $blendedUnitCost = $costing ? $purchaseAmount / $quantity : 0.0;
 
+        if ($this->usesMovingAverage($line)) {
+            [$currentQty, $currentValue] = $this->balance($line);
+            if ($currentQty < 0 || $currentValue < 0) {
+                throw new \DomainException('Settle negative stock before using moving average.');
+            }
+            $receipt = (new MovingAverageDriver())->receipt($currentQty, $currentValue, $quantity, $blendedUnitCost);
+            $purchaseAmount = $receipt->amount - $currentValue;
+        }
         $layer = CostLayer::create([
             'item_id' => $line->item_id,
             'scope_type' => $scopeType,
@@ -375,7 +489,7 @@ final class PostingEngine
 
         $this->settleNegativeLayers($layer);
 
-        $this->appendLedger($line, 'in', $quantity, $blendedUnitCost, $layer->getKey(), (float) $line->qty_bonus);
+        $this->appendLedger($line, 'in', $quantity, $blendedUnitCost, $layer->getKey(), (float) $line->qty_bonus, round($costing ? $purchaseAmount : 0.0, 6));
     }
 
     private function settleNegativeLayers(CostLayer $receiptLayer): void
@@ -428,6 +542,27 @@ final class PostingEngine
         $remaining = (float) $line->qty + (float) $line->qty_bonus;
         $totalQuantity = $remaining;
 
+        if ($line->storage_location_id !== null) {
+            [$physicalQty] = $this->balance($line, true);
+            if ($physicalQty + 0.0000001 < $remaining) {
+                throw new \DomainException('Insufficient stock at the requested storage location.');
+            }
+        }
+        $averageCost = null;
+        $averageAmount = null;
+        if ($costing && $this->usesMovingAverage($line)) {
+            [$balanceQty, $balanceValue] = $this->balance($line);
+            if ($balanceValue < 0) {
+                throw new \DomainException('Moving average requires a non-negative inventory value.');
+            }
+            // A finite positive stock pool is required even when FIFO negative stock is enabled.
+            $result = (new MovingAverageDriver())->issue([
+                ['qty' => $balanceQty, 'unit_cost' => $balanceQty > 0 ? $balanceValue / $balanceQty : 0.0],
+            ], $remaining);
+            $averageCost = $result->unitCost;
+            $averageAmount = round(min($result->amount, max(0.0, $balanceValue)), 6);
+        }
+        $issuedAmount = 0.0;
         $item = Item::query()->findOrFail($line->item_id);
         $layersQuery = CostLayer::query()
             ->where('inv_cost_layers.item_id', $line->item_id)
@@ -449,15 +584,19 @@ final class PostingEngine
             $layer->remaining_qty = (float) $layer->remaining_qty - $taken;
             $layer->save();
             $bonus = (float) $line->qty_bonus * ($taken / $totalQuantity);
-            $this->appendLedger($line, 'out', $taken, $costing ? (float) $layer->unit_cost : 0.0, $layer->getKey(), $bonus);
-            $remaining -= $taken;
+            $unitCost = $costing ? ($averageCost ?? (float) $layer->unit_cost) : 0.0;
+            $amount = $averageAmount === null ? null : ($remaining - $taken < 0.0000001
+                ? round($averageAmount - $issuedAmount, 6) : round($taken * $unitCost, 6));
+            $this->appendLedger($line, 'out', $taken, $unitCost, $layer->getKey(), $bonus, $amount);
+            $issuedAmount += $amount ?? $taken * $unitCost;
+            $remaining = round($remaining - $taken, 6);
         }
 
         if ($remaining <= 0) {
             return;
         }
 
-        if (config('inventory.policies.negative_stock.mode', 'block') !== 'allow') {
+        if ($averageCost !== null || config('inventory.policies.negative_stock.mode', 'block') !== 'allow') {
             throw new \DomainException('Insufficient stock for inventory issue.');
         }
 
@@ -496,6 +635,7 @@ final class PostingEngine
         float $unitCost,
         int $layerId,
         float $bonusQuantity = 0.0,
+        ?float $amount = null,
     ): void {
         StockLedger::create([
             'document_line_id' => $line->getKey(),
@@ -506,7 +646,7 @@ final class PostingEngine
             'qty' => $quantity,
             'qty_bonus' => $bonusQuantity,
             'unit_cost' => $unitCost,
-            'amount' => $quantity * $unitCost,
+            'amount' => $amount ?? round($quantity * $unitCost, 6),
             'cost_layer_id' => $layerId,
         ]);
     }
@@ -528,7 +668,7 @@ final class PostingEngine
     private function payloadHash(DocumentData $data): string
     {
         $payload = get_object_vars($data);
-        $payload['lines'] = array_map(static fn(LineData $line): array => get_object_vars($line), $data->lines);
+        $payload['lines'] = array_map(static fn(LineData $line): array => $line->jsonSerialize(), $data->lines);
         $payload['reservationConsumptions'] = array_map(
             static fn(ReservationConsumptionData $consumption): array => get_object_vars($consumption),
             $data->reservationConsumptions,

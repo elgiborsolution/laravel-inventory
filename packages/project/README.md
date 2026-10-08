@@ -1,9 +1,29 @@
 # Laravel Inventory Project
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Penyediaan dan pengambilan material untuk proyek atau site.
+
+**Fungsi dan fitur:** Alokasi berbasis reservasi, penambahan alokasi, pemindahan alokasi secara atomik, pengambilan material sebagian, serta laporan alokasi dan konsumsi.
+
+**Contoh penggunaan:** Mereservasi material untuk proyek konstruksi lalu mengeluarkannya bertahap sesuai kebutuhan lapangan.
+
+**Batas dan integrasi host:** Identitas proyek berasal dari host. Pemindahan alokasi reservasi bukan perpindahan fisik barang; perubahan stok tetap melalui Core. Modul tidak menyediakan manajemen jadwal atau anggaran proyek.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-project-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
+
+## Technical behavior
 
 `elgibor-solution/laravel-inventory-project` is a bundled module that
 depends only on Inventory Core and owns all `invp_*` tables.

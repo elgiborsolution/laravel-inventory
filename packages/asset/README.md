@@ -1,9 +1,29 @@
 # Laravel Inventory Asset
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Peminjaman aset perusahaan yang perlu dilacak per serial.
+
+**Fungsi dan fitur:** Checkout/check-in, reservasi aset, pencegahan alokasi aktif ganda, tanggal jatuh tempo, dan notifier keterlambatan yang dapat diganti.
+
+**Contoh penggunaan:** Meminjamkan laptop atau alat kerja kepada pegawai lalu mencatat pengembaliannya.
+
+**Batas dan integrasi host:** Checkout/check-in tidak mengubah stok on-hand. Status peminjaman mengikuti data checkout/alokasi, bukan status serial on_loan. Host mengatur penerima, UI, dan jadwal notifikasi; jangan alokasikan serial yang sama melalui Asset dan Library.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-asset-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
+
+## Technical behavior
 
 `elgibor-solution/laravel-inventory-asset` is a bundled module that
 depends only on Inventory Core and owns all `inva_*` tables.

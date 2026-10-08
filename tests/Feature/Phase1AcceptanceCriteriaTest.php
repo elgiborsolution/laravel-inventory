@@ -29,7 +29,13 @@ test('AC-01 FIFO receipt and issue update quantity and value', function (): void
 });
 
 test('AC-01 Weighted Average posts through the Posting Engine')->todo('Driver exists, but PostingEngine driver selection is not implemented.');
-test('AC-01 Moving Average posts through the Posting Engine')->todo('Driver exists, but PostingEngine driver selection is not implemented.');
+test('AC-01 Moving Average posts through the Posting Engine', function (): void {
+    config(['inventory.costing.default_method' => 'moving_average']);
+    $this->postReceipt(10, 40000, externalId: 'MA-1');
+    $this->postReceipt(10, 50000, externalId: 'MA-2');
+    $this->postIssue(5);
+    expect((float) DB::table('inv_stock_cards')->value('running_value'))->toBe(675000.0);
+});
 
 test('AC-02 organization and storage depth retain mandatory minimums', function (): void {
     $resolver = app(ConfigurationDepthResolver::class);

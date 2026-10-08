@@ -54,6 +54,12 @@ final class InventoryManager
         return $this->reservations->consume($id, $qty, $key, $lineId);
     }
 
+    /** @return list<array<string, mixed>> */
+    public function stockCard(int $itemId, int $warehouseId, ?int $storageLocationId = null): array
+    {
+        return app(StockCardReport::class)->forItem($itemId, $warehouseId, $storageLocationId);
+    }
+
     public function availability(int $itemId, int $warehouseId): StockAvailability
     {
         return $this->availability->forItem($itemId, $warehouseId);

@@ -28,7 +28,7 @@ external bridges, verification, and deployment.
    receipt/issue smoke, then `php artisan config:clear`. Module registration with cached configuration is tested; repeat this cycle
    with real host receipt/issue flows before deployment.
 
-### Installing optional packages from this monorepo
+### Activating bundled modules
 
 Modules are bundled in Core. To activate WMS after installation:
 
@@ -50,6 +50,9 @@ from a bundled release also contains the modules, without requiring Pages.
 See [installation](INSTALLATION.md) for sources, upgrade, cache handling, and
 maintainer release steps. Standalone module manifests remain internal catalog
 metadata; Core replaces their Composer names to prevent duplicate installations.
+
+For module purposes, features, examples, and host responsibilities, see the
+[nine-module guide](INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul).
 
 ## Package combinations and ownership
 
@@ -110,9 +113,15 @@ Scheduler/retry guarantees across hosts remain a release verification item.
 
 ## Uninstall and troubleshooting
 
-Stop host jobs and writes before disabling a package. Back up its tables and
-remove host service/provider references before removing the Composer dependency.
-Removing a dependency does not remove data. Preserve historical records by default.
+To disable a bundled module, stop its host jobs/writes, remove manual provider
+registrations and move its `config/inventory-<module>.php` file out of the host
+config directory. Clear/rebuild config cache and restart long-running workers.
+Do not remove a standalone Composer dependency: module code ships inside Core.
+Data and tables remain, and host code must stop calling the disabled module.
+See [module status and deactivation](INSTALLATION.md#9-status-modul-dan-penonaktifan).
+
+Before removing Core itself, back up its tables and remove host service/provider
+references. Removing the dependency does not remove data. Preserve historical records.
 Do not use a global `migrate:rollback` on a live host to uninstall one package:
 it can include other packages in the same batch. Test dependency-aware teardown
 only on a disposable clone with an explicit approved data-retention plan.

@@ -80,7 +80,7 @@ final class InventoryServiceProvider extends ServiceProvider
             }
 
             foreach (['stock_count', 'stock_opname'] as $type) {
-                $registry->register($type, new DocumentTypeDefinition('none', costing: false));
+                $registry->register($type, new DocumentTypeDefinition('none', costing: true));
             }
 
             return $registry;

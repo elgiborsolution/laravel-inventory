@@ -35,6 +35,7 @@ Schema details (columns, indexes, FKs) remain authoritative in linked migrations
   - `reserve(int $itemId, float $qty, int $warehouseId, string $sourceType, string $sourceId): ESolution\Inventory\Models\Reservation`
   - `release(int $id, ?float $qty [optional]): ESolution\Inventory\Models\Reservation`
   - `consume(int $id, float $qty, string $key, ?int $lineId [optional]): ESolution\Inventory\Models\Reservation`
+  - `stockCard(int $itemId, int $warehouseId, ?int $storageLocationId [optional]): array`
   - `availability(int $itemId, int $warehouseId): ESolution\Inventory\DTO\StockAvailability`
 - [ESolution\Inventory\Services\MovementPolicyManager](../src/Services/MovementPolicyManager.php)
   - `register(string $inventoryModel, string $policyClass): void`
@@ -57,6 +58,8 @@ Schema details (columns, indexes, FKs) remain authoritative in linked migrations
   - `forItem(int $itemId, int $warehouseId): ESolution\Inventory\DTO\StockAvailability`
 - [ESolution\Inventory\Services\StockCardManager](../src/Services/StockCardManager.php)
   - `refresh(ESolution\Inventory\Models\DocumentLine $line): ESolution\Inventory\Models\StockCard`
+- [ESolution\Inventory\Services\StockCardReport](../src/Services/StockCardReport.php)
+  - `forItem(int $itemId, int $warehouseId, ?int $storageLocationId [optional]): array`
 - [ESolution\Inventory\Services\TrackingPolicy](../src/Services/TrackingPolicy.php)
   - `validateLine(ESolution\Inventory\Models\Item $item, ?ESolution\Inventory\Models\Batch $batch, string $direction, ESolution\Inventory\DTO\LineData $line, Carbon\CarbonInterface $trxDate): void`
   - `prepareIssueLayers(Illuminate\Database\Eloquent\Builder $query, ESolution\Inventory\Models\Item $item, Carbon\CarbonInterface $trxDate): Illuminate\Database\Eloquent\Builder`

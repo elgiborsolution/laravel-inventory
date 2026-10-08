@@ -1,9 +1,29 @@
 # Laravel Inventory Retail
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Toko dengan varian produk dan barang titipan supplier (konsinyasi).
+
+**Fungsi dan fitur:** Membentuk kombinasi ukuran/warna sebagai Core Item terpisah; mengatur terms konsinyasi per barang/lokasi; mencatat kewajiban settlement dari barang terjual. POS memakai posting Core, sedangkan e-commerce dapat memakai reservasi sebelum fulfillment.
+
+**Contoh penggunaan:** Toko pakaian membuat SKU untuk setiap ukuran dan warna, lalu melacak penjualan barang titipan.
+
+**Batas dan integrasi host:** Harga, diskon, kasir, storefront, pembayaran supplier, dan jurnal settlement tetap ditangani aplikasi host.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-retail-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
+
+## Technical behavior
 
 `elgibor-solution/laravel-inventory-retail` is an optional vertical for
 `elgibor-solution/laravel-inventory`. It owns only the

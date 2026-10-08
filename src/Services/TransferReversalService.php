@@ -70,7 +70,7 @@ final class TransferReversalService
             foreach ($data->lines as $index => $input) {
                 if (! is_finite($input->qty) || $input->qty <= 0 || round($input->qty, 6) !== $input->qty
                     || $input->qtyBonus !== 0.0 || $input->meta !== [] || $input->unitCost !== null
-                    || $input->warehouseId === $data->targetWarehouseId) {
+                    || $input->warehouseId === $data->targetWarehouseId || $input->transactionPrice !== null || $input->discountPerUnit !== 0.0) {
                     throw new \DomainException('Transfer requires positive six-decimal quantities, distinct warehouses, and no cost/bonus/metadata override.');
                 }
                 $out = $this->line($document, $input, $index * 2 + 1);

@@ -1,9 +1,29 @@
 # Laravel Inventory Manufacturing
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Produksi atau perakitan barang berdasarkan BOM (daftar kebutuhan bahan).
+
+**Fungsi dan fitur:** BOM berversi yang tidak dapat diubah setelah aktivasi; Production Order; konsumsi bahan dan penerimaan hasil dalam satu transaksi; biaya aktual bahan; scrap, selisih pemakaian/hasil, dan produksi bertahap melalui WIP.
+
+**Contoh penggunaan:** Merakit produk dari beberapa komponen, lalu menghitung biaya hasil berdasarkan biaya komponen yang benar-benar dikeluarkan.
+
+**Batas dan integrasi host:** Referensi pesanan bisnis berasal dari host. Penyelesaian produksi saat ini mensyaratkan accounting Core/modul nonaktif dan NullAccountingBridge.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-manufacturing-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
+
+## Technical behavior
 
 `elgibor-solution/laravel-inventory-manufacturing` is a bundled module that depends only on Inventory Core. It owns all `invm_*`
 tables and does not implement stock posting or costing logic.

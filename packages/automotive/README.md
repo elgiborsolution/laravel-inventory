@@ -1,17 +1,32 @@
 # Inventory Automotive
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Pencatatan pemakaian sparepart untuk work order dan kendaraan.
+
+**Fungsi dan fitur:** WorkOrderParts::issue untuk pengeluaran sparepart melalui Core, laporan pemakaian per work order/kendaraan/barang/serial, serta preset serial dan sertifikat compliance.
+
+**Contoh penggunaan:** Mengeluarkan sparepart untuk servis kendaraan dan melaporkan kuantitas serta biaya pemakaiannya.
+
+**Batas dan integrasi host:** Master kendaraan dan work order dimiliki host; tidak ada migration tambahan. Pengeluaran Automotive ditolak ketika accounting terkait aktif atau bridge bukan NullAccountingBridge karena service code belum terverifikasi.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-automotive-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
 
-Bundled module using Inventory Core. No Work Order or vehicle
-tables are owned here. Enable AutomotiveServiceProvider and publish
-`inventory-automotive-config` in the host Laravel application.
+## Technical behavior
 
-Requires Core `^2.0`. Follow the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo),
-using package `elgibor-solution/laravel-inventory-automotive` and publish tag
-`inventory-automotive-config`.
+Bundled module using Inventory Core. No Work Order or vehicle tables are owned
+here. Publishing `inventory-automotive-config` activates the module on the next boot.
 
 Apply AutomotivePreset to stock Items to require receipt/issue serials and a
 valid `compliance` Certificate attached to the Core Serial. Existing tracking

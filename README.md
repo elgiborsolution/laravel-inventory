@@ -23,8 +23,10 @@ php artisan inventory:modules
 ```
 
 Panduan Bahasa Indonesia: [instalasi project baru dan project lama](docs/INSTALLATION.md),
-termasuk pemasangan seluruh sembilan modul, konfigurasi, migrasi data lama,
+termasuk aktivasi modul, konfigurasi, migrasi data lama,
 integrasi Accounting/Approval, verifikasi, dan deployment.
+Lihat [kegunaan, fungsi, dan fitur sembilan modul](docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk contoh penggunaan dan batas tanggung jawab aplikasi host.
 
 ```bash
 composer require elgibor-solution/laravel-inventory
@@ -49,8 +51,8 @@ installation with separately installed modules.
 
 The published `config/inventory.php` controls organization/storage depth,
 costing scope, negative-stock policy, idempotency, optional bridges, and
-after-commit behavior. Republish with `--force` when intentionally replacing an
-older published config, after backing up project-specific values.
+after-commit behavior. When upgrading, compare and merge configuration changes
+manually to preserve project-specific values; do not force-overwrite host config.
 
 Accounting is off by default:
 

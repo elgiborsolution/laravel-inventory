@@ -80,7 +80,20 @@ test('standard transfer posts balanced outbound and inbound legs atomically', fu
         ->and((float) $entries->where('direction', 'in')->sum('amount'))->toBe(30.0)
         ->and((float) $entries->where('direction', 'out')->sum('amount'))->toBe(30.0);
 });
-test('stock count posts only the calculated variance')->todo('Stock-count variance orchestration is not implemented.');
+test('stock count posts only the calculated variance', function (): void {
+    $this->postReceipt(10, 5);
+    $document = app(InventoryManager::class)->post(new DocumentData(
+        'stock_count',
+        1,
+        '2026-10-01',
+        [new LineData(1, 1, 1, 7)],
+        externalId: 'COUNT-VARIANCE',
+    ));
+    $entries = StockLedger::whereIn('document_line_id', $document->lines()->select('id'))->get();
+    expect((float) $entries->sum('qty'))->toBe(3.0)
+        ->and((float) $entries->sum('amount'))->toBe(15.0)
+        ->and($entries->first()->direction)->toBe('out');
+});
 test('reversal creates opposite immutable effects', function (): void {
     $receipt = $this->postReceipt(5, 10);
     $original = StockLedger::firstOrFail()->toArray();

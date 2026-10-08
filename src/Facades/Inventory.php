@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static Reservation reserve(int $itemId, float $qty, int $warehouseId, string $sourceType, string $sourceId)
  * @method static Reservation release(int $reservationId, ?float $qty = null)
  * @method static Reservation consume(int $reservationId, float $qty, string $idempotencyKey, ?int $documentLineId = null)
+ * @method static array stockCard(int $itemId, int $warehouseId, ?int $storageLocationId = null)
  * @method static StockAvailability availability(int $itemId, int $warehouseId)
  */
 final class Inventory extends Facade

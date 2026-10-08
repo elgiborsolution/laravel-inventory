@@ -1,16 +1,32 @@
 # Laravel Inventory WMS
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Gudang yang membutuhkan pengaturan pekerjaan penyimpanan dan pengambilan barang.
+
+**Fungsi dan fitur:** Strategi put-away (penempatan), picking FIFO/FEFO, task, wave (kelompok tugas picking), LPN (identitas container), cross-docking, dan pekerjaan replenishment (pengisian ulang lokasi).
+
+**Contoh penggunaan:** Barang diterima, petugas memperoleh tugas penempatan, kemudian mengambil barang berdasarkan wave untuk pengiriman.
+
+**Batas dan integrasi host:** Saran lokasi dan pekerjaan replenishment tidak otomatis mengubah saldo. Host menghubungkan penyelesaian pekerjaan dengan posting/transfer Core; integrasi transportasi juga milik host.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-wms-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
+
+## Technical behavior
 
 `elgibor-solution/laravel-inventory-wms` is an optional bundled module for physical warehouse orchestration. It depends only on
 Inventory Core and owns every `invw_*` table.
-
-Requires Core `^2.0`. Follow the [monorepo installation guide](../../docs/ECOSYSTEM_RELEASE.md#installing-optional-packages-from-this-monorepo),
-using package `elgibor-solution/laravel-inventory-wms` and publish tag
-`inventory-wms-config`.
 
 ## Strategy ownership
 

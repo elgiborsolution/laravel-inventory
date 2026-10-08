@@ -1,14 +1,33 @@
 # Inventory Library
 
+## Kegunaan dan fitur
+
+**Kegunaan:** Sirkulasi peminjaman buku atau koleksi per eksemplar.
+
+**Fungsi dan fitur:** Satu serial per copy, antrean hold, reservasi copy yang siap diambil, checkout/check-in, perpanjangan, kedaluwarsa ready hold, status terlambat, dan pencatatan denda.
+
+**Contoh penggunaan:** Anggota memesan buku, mengambil copy yang tersedia, lalu mengembalikan atau memperpanjang pinjaman.
+
+**Batas dan integrasi host:** Anggota berasal dari host. Sirkulasi tidak mengubah on-hand; tarif denda otomatis, pembayaran, dan jurnal tidak disediakan. Host menjadwalkan expireReadyHolds(); jangan alokasikan serial yang sama melalui Asset dan Library.
+
+Lihat [perbandingan sembilan modul](../../docs/INSTALLATION.md#51-kegunaan-fungsi-dan-fitur-sembilan-modul)
+untuk memilih modul yang sesuai.
+
+## Activation
+
 Bundled installation: install Core once, then run `php artisan config:clear`,
 `php artisan vendor:publish --tag=inventory-library-config`, and
 `php artisan migrate`. Check `php artisan inventory:modules`. No separate module
-download is needed. See [installation and upgrade](../../docs/INSTALLATION.md).
+download is needed. Core registers the module provider on the next boot when
+its host config file exists; do not register a module provider manually for this
+activation flow. See [installation and upgrade](../../docs/INSTALLATION.md) for
+config cache, worker restarts, upgrades, and deactivation.
 
-Bundled module using Inventory Core. Register
-LibraryServiceProvider, run migrations, and optionally publish
-`inventory-library-config`. It owns only `invl_*` tables and imports no
-Asset or other vertical code.
+## Technical behavior
+
+Bundled module using Inventory Core. Publishing `inventory-library-config`
+activates the module on the next boot. It owns only `invl_*` tables and imports
+no Asset or other vertical code.
 
 Apply LibraryPreset to an active stock Item, create one Core Serial per copy,
 and receive each copy through Core. Core serial lifecycle remains unchanged:
