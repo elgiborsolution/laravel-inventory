@@ -22,7 +22,7 @@ in the integration pipeline before GA.
 
 Testbench 9/10/11 covers Laravel 11/12/13 respectively. Pest 3/4 is used according
 to the matrix above. Laravel 9/10 CI jobs and their legacy test-tool pins and
-advisory exceptions have been removed. The coding-standard job uses PHP 8.3.
+advisory exceptions have been removed. The coding-standard job uses PHP 8.2 to match the minimum supported runtime.
 Consumers do not inherit CI-only framework selections or advisory exceptions.
 
 The Laravel 11 row selects framework `^11.57` in the CI checkout and exempts

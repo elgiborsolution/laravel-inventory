@@ -268,8 +268,8 @@ it('recognizes a supplier return loss and rejects a missing invoice price', func
 });
 
 it('rejects conflicting purchase cost and invalid discounts before recording stock', function (): void {
-    expect(fn() => businessPost('purchase','P1',10,40000,price: 50000))->toThrow(DomainException::class,'must equal');
-    expect(fn() => businessPost('purchase','P2',10,price: 100,discount: 101))->toThrow(DomainException::class,'cover the discount');
-    expect(fn() => businessPost('purchase','P3',10,40000,discount: 1))->toThrow(DomainException::class,'requires a transaction price');
+    expect(fn() => businessPost('purchase', 'P1', 10, 40000, price: 50000))->toThrow(DomainException::class, 'must equal');
+    expect(fn() => businessPost('purchase', 'P2', 10, price: 100, discount: 101))->toThrow(DomainException::class, 'cover the discount');
+    expect(fn() => businessPost('purchase', 'P3', 10, 40000, discount: 1))->toThrow(DomainException::class, 'requires a transaction price');
     expect(Document::count())->toBe(0)->and(StockLedger::count())->toBe(0);
 });
